@@ -3,6 +3,11 @@
 CHANGES
 =======
 
+1.1.3
+-----
+
+ - Correct terminal leak in RemoteRunner
+
 1.1.2
 -----
 
