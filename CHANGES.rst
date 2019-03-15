@@ -3,6 +3,11 @@
 CHANGES
 =======
 
+1.1.2
+-----
+
+ - Make Python shell short_timeout configurable
+
 1.1.1
 -----
 

@@ -37,6 +37,10 @@ class PythonShellBase(Shell):
         LOGGER.log(_LOGLEVEL, "Exit from Python shell")
         self._send_input_line('exit()')
 
+    @classmethod
+    def set_short_timeout(cls, timeout):
+        cls.short_timeout = timeout
+
     def _single_command_no_output(self, cmd, timeout=10):
         LOGGER.log(_LOGLEVEL,
                    "(PythonShell) single_command_no_output send line: %s",

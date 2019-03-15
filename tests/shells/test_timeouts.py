@@ -2,6 +2,8 @@ from contextlib import contextmanager
 from crl.interactivesessions.shells.timeouts import Timeouts
 from crl.interactivesessions.shells.shell import DEFAULT_STATUS_TIMEOUT
 from crl.interactivesessions.shells.msgreader import MsgReader
+from crl.interactivesessions.shells.rawpythonshell import RawPythonShell
+from crl.interactivesessions.shells.msgpythonshell import MsgPythonShell
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
@@ -31,3 +33,17 @@ def in_timeouts(timeout):
         yield timeout
     finally:
         t.reset()
+
+
+def test_python_short_timeout():
+    t = Timeouts()
+    assert_python_short_timeouts(10)
+    t.set_python_short_timeout(60)
+    assert_python_short_timeouts(60)
+    t.reset_python_short_timeout()
+    assert_python_short_timeouts(10)
+
+
+def assert_python_short_timeouts(timeout):
+    assert RawPythonShell.short_timeout == timeout
+    assert MsgPythonShell.short_timeout == timeout
