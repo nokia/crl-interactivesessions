@@ -31,7 +31,7 @@ class Timeouts(object):
     def set_python_short_timeout(timeout):
         """Set timeout for short Python shell operations.
         """
-        PythonShellBase.set_short_timeout(timeout)
+        PythonShellBase.set_short_timeout(float(timeout))
 
     def reset_python_short_timeout(self):
         """Reset to default the timeout for short Python shell operations.

@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import pytest
 from crl.interactivesessions.shells.timeouts import Timeouts
 from crl.interactivesessions.shells.shell import DEFAULT_STATUS_TIMEOUT
 from crl.interactivesessions.shells.msgreader import MsgReader
@@ -35,11 +36,15 @@ def in_timeouts(timeout):
         t.reset()
 
 
-def test_python_short_timeout():
+@pytest.mark.parametrize('timeout, expected', [
+    (60, 60.0),
+    ('60', 60.0),
+    (60.0, 60.0)])
+def test_python_short_timeout(timeout, expected):
     t = Timeouts()
     assert_python_short_timeouts(10)
-    t.set_python_short_timeout(60)
-    assert_python_short_timeouts(60)
+    t.set_python_short_timeout(timeout)
+    assert_python_short_timeouts(expected)
     t.reset_python_short_timeout()
     assert_python_short_timeouts(10)
 

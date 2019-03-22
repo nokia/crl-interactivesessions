@@ -3,6 +3,11 @@
 CHANGES
 =======
 
+1.1.4
+-----
+
+ - Convert string to float in set_python_short_timeout
+
 1.1.3
 -----
 
