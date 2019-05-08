@@ -53,7 +53,7 @@ class PromptPythonServer(LineServerBase, servers.PythonServer):
             return ExecCommandErrorObj(e, cmd)
 
     def _send_reply(self, msg):
-        self._write('{out}{prompt}'.format(out=msg.serialize(), prompt=self._prompt))
+        self._write('{out}{prompt}'.format(out=msg.serialize_arg(), prompt=self._prompt))
 
     def _write(self, s):
         LOGGER.debug('Writing %s', s)

@@ -11,6 +11,8 @@ from crl.interactivesessions._filecopier import (
     _OsProxiesForRemoteFile,
     _LocalFile)
 
+from crl.interactivesessions.RunnerHandler import TOKEN
+
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
@@ -46,7 +48,7 @@ def mock_fileproxy():
 
 def test_read_buffer_size_raises(mock_terminal, mock_fileproxy):
     mock_terminal.get_session.return_value.terminal.buf = (
-        '0000000cannotbedecoded')
+        '{token}0000000cannotbedecoded'.format(token=TOKEN))
     with pytest.raises(RemoteFileReadingFailed):
         _RemoteFileProxy(mock_fileproxy, mock_terminal, 1).read(1)
 

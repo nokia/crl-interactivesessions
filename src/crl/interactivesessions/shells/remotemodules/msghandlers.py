@@ -45,7 +45,8 @@ class ExecCommandHandler(CommandHandlerBase):
 
     def handle_msg(self, execcommandrequest):
         out_obj = self._exec_and_get_outobj(execcommandrequest)
-        self._send_reply(msgs.ExecCommandReply.create(out_obj))
+        self._send_reply(msgs.ExecCommandReply.create_reply(execcommandrequest,
+                                                            out_obj))
 
     def _exec_and_get_outobj(self, execcommandrequest):
         try:
@@ -60,8 +61,8 @@ class ServeExitRequestHandler(MsgHandlerBase):
 
 
 class ServerIdRequestHandler(MsgHandlerBase):
-    def handle_msg(self, _):
-        self._send_reply(msgs.ServerIdReply.create(self._server_id))
+    def handle_msg(self, request):
+        self._send_reply(msgs.ServerIdReply.create_reply(request, self._server_id))
 
 
 class SendCommandHandler(CommandHandlerBase):

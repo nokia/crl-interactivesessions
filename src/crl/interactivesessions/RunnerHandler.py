@@ -1,24 +1,18 @@
-try:
-    import tty
-    import termios
-except ImportError:
-    # in Windows only path to the module is needed
-    pass
 import os
 import sys
 import pickle
 import base64
 import StringIO  # pylint: disable=import-error
 import traceback
-import logging
 import threading
+import fcntl
 from contextlib import contextmanager
 from functools import wraps
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-LOGGER = logging.getLogger(__name__)
+TOKEN = '+7_<sf80UBtd%umz'
 
 
 def get_python_file_path():
@@ -41,9 +35,7 @@ def exec_in_module(code, module):
 class FileHandle(object):
 
     def __init__(self, handle):
-        self.logger = logging.getLogger()
         self.handle = handle
-        self.olds = dict()
         self.infile = sys.stdin
         self.outfile = None
 
@@ -51,34 +43,31 @@ class FileHandle(object):
         self.outfile = outfile
 
     def write(self, size):
-        self._setraw_if_needed(self.infile.fileno())
         self._write_stdout_with_flush('reading start')
-        self.handle.write(base64.b64decode(self.infile.read(size)))
+        with self._blocking_context():
+            self.handle.write(base64.b64decode(self.infile.read(size)))
         self._write_stdout_with_flush('reading stop')
+
+    @contextmanager
+    def _blocking_context(self):
+        infd = self.infile.fileno()
+        fl = fcntl.fcntl(infd, fcntl.F_GETFL)
+        fcntl.fcntl(infd, fcntl.F_SETFL, fl & ~os.O_NONBLOCK)
+        try:
+            yield None
+        finally:
+            fcntl.fcntl(infd, fcntl.F_SETFL, fl)
 
     def _write_stdout_with_flush(self, buf):
         self.outfile.write(buf)
         self.outfile.flush()
 
     def read(self, size):
-        self._setraw_if_needed(self.outfile.fileno())
         buf = self.handle.read(size)
-        self._write_stdout_with_flush(b'{lenbuf:011d}{buf}'.format(
+        self._write_stdout_with_flush(b'{token}{lenbuf:011d}{buf}'.format(
+            token=TOKEN,
             lenbuf=len(buf),
             buf=buf))
-
-    def _setraw_if_needed(self, fd):
-        if fd not in self.olds:
-            self._set_rawmode(fd)
-
-    def _set_rawmode(self, fd):
-        self.olds[fd] = termios.tcgetattr(fd)
-        tty.setraw(fd)
-
-    def set_originalmode(self):
-        for fd, old in self.olds.items():
-            termios.tcsetattr(fd, termios.TCSADRAIN, old)
-        self._write_stdout_with_flush('originalmode set')
 
 
 class _Response(object):

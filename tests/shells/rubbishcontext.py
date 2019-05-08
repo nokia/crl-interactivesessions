@@ -1,10 +1,9 @@
 import abc
 import logging
 import os
-import mock
 import six
 from .terminalmockos import (
-    AttrContextBase,
+    WriteContextBase,
     AttrMockOsBase)
 
 
@@ -14,7 +13,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 @six.add_metaclass(abc.ABCMeta)
-class RubbishContextBase(AttrContextBase):
+class RubbishContextBase(WriteContextBase):
 
     @property
     def client_attr(self):
@@ -32,9 +31,6 @@ class RubbishContextBase(AttrContextBase):
     @staticmethod
     def _mock_os_factory():
         return RubbishMockOs()
-
-    def _os_patcher(self):
-        return mock.patch('os.write', side_effect=self._mock_os.write)
 
 
 class ClientRubbishContext(RubbishContextBase):
