@@ -1,20 +1,38 @@
+import json
+from collections import namedtuple
+
+
+try:
+    RANGE = xrange
+except NameError:
+    RANGE = range
+
 if 'msgs' not in globals():
     from . import msgs
+    from . import tokenreader
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-CHILD_MODULES = [msgs]
+CHILD_MODULES = [msgs, tokenreader]
+
+
+class StrCommReadError(Exception):
+    pass
 
 
 class StrComm(object):
 
+    _token = '.;-jJ(8[)OwQaKsF=&Pu'
     len_width = 11
-    str_tmpl = '{{s_len:0{len_width}}}{{s}}'.format(len_width=len_width)
+    str_tmpl = '{token}{{s_len:0{len_width}}}{{s}}'.format(
+        token=_token,
+        len_width=len_width)
 
     def __init__(self, comm_factory):
         self._comm_factory = comm_factory
         self._comm = None
+        self._tokenreader_int = None
 
     @property
     def comm(self):
@@ -22,25 +40,61 @@ class StrComm(object):
             self._comm = self._comm_factory()
         return self._comm
 
+    @property
+    def _tokenreader(self):
+        if self._tokenreader_int is None:
+            self._tokenreader_int = tokenreader.TokenReader(
+                self._token,
+                read_until_size=self.comm.read_until_size,
+                matcher_factory=tokenreader.SingleGapMatcher)
+        return self._tokenreader_int
+
     def write_str(self, s):
         self.comm.write(self.str_tmpl.format(s_len=len(s), s=s))
 
     def read_str(self):
-        return self.comm.read_until_size(int(self.comm.read_until_size(self.len_width)))
+        while True:
+            try:
+                self._tokenreader.read_until_token()
+                return self.comm.read_until_size(self._get_read_len())
+            except (StrCommReadError, self.comm.readerror):
+                pass
+
+    def _get_read_len(self):
+        len_str = self.comm.read_until_size(self.len_width)
+        try:
+            return int(len_str)
+        except ValueError:
+            raise StrCommReadError()
+
+
+class Retry(namedtuple('Retry', ['tries', 'interval', 'timeout'])):
+    def serialize(self):
+        return json.dumps(self._asdict())
+
+    @classmethod
+    def deserialize(cls, serialized_retry):
+        return cls(**json.loads(serialized_retry))
+
+    def timeouts(self):
+        for _ in RANGE(1, self.tries):
+            yield self.interval
+        yield self.timeout
 
 
 class MsgManagerBase(object):
 
-    messages = msgs.MSGMAP
-    msgid_len = 3
-    msg_tmpl = '{{msgid:0{msgid_len}}}{{serialized_msg}}'.format(msgid_len=msgid_len)
-
     def __init__(self):
+        msgs.set_msgclses()
         self._msghandler_factories = dict()
         self._strcomm = None
         self._handler_maps = []
         self._update_handler_maps()
         self._setup_handlers()
+        self._retry = None
+
+    def set_retry(self, retry):
+        self._retry = retry
 
     def _update_handler_maps(self):
         """Add :class:`.HandlerMap` instance
@@ -61,13 +115,10 @@ class MsgManagerBase(object):
     def set_comm_factory(self, comm_factory):
         self._strcomm = StrComm(comm_factory)
 
-    def serialize(self, msg):
-        return self.msg_tmpl.format(
-            msgid=self.messages.msgclsmsgids[msg.__class__.__name__].msgid,
-            serialized_msg=msg.serialize())
+    @staticmethod
+    def serialize(msg):
+        return msg.serialize()
 
-    def deserialize(self, s):
-        msgid = int(s[:self.msgid_len])
-        msg = self.messages.msgclses[msgid]()
-        msg.deserialize(s[self.msgid_len:])
-        return msg
+    @staticmethod
+    def deserialize(s):
+        return msgs.MsgBase.deserialize(s)

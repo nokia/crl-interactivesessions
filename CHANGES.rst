@@ -3,6 +3,11 @@
 CHANGES
 =======
 
+1.1.5
+-----
+
+ - Make MsgPythonShell more robust
+
 1.1.4
 -----
 

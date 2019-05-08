@@ -3,6 +3,7 @@ import abc
 import os
 import re
 import select
+import time
 from io import BytesIO
 from contextlib import contextmanager
 import mock
@@ -104,7 +105,11 @@ class LineServerBase(object):
         return io.getvalue()
 
     def _read(self):
-        return self._inout.read_file.read(1)
+        while True:
+            try:
+                return self._inout.read_file.read(1)
+            except IOError:
+                pass
 
     @abc.abstractmethod
     def _server_setup(self):
@@ -179,7 +184,7 @@ class ServerProcess(object):
 class ServerTerminal(SpawnBase):
 
     def __init__(self, *args, **kwargs):
-        super(ServerTerminal, self).__init__(self, *args, **kwargs)
+        super(ServerTerminal, self).__init__(*args, **kwargs)
         self._pipes = Pipes()
         self._serverprocess = None
         self._serverprocess_factory = None
@@ -250,6 +255,7 @@ class ServerTerminal(SpawnBase):
             raise pexpect.EOF('Python terminal closed')
 
         if self._raise_timeout_in_read:
+            time.sleep(0.01)
             raise pexpect.TIMEOUT('Timeout')
         rlist = [self.child_fd]
         LOGGER.info('Waiting for %s in select with timeout %s', rlist, timeout)

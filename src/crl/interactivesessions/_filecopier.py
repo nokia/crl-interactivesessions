@@ -1,12 +1,19 @@
 from contextlib import contextmanager
+import logging
 import os
 import stat
 import errno
 import base64
 import pexpect
+from .shells.remotemodules.tokenreader import (
+    TokenReader,
+    SingleGapMatcher)
+from .RunnerHandler import TOKEN
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
+
+LOGGER = logging.getLogger(__name__)
 
 
 class RemoteFileReadingFailed(Exception):
@@ -34,6 +41,10 @@ class _RemoteFileProxy(object):
         self.timeout = timeout
         self._filehandle = None
         self._proxy_handle = None
+        self._tokenreader = TokenReader(
+            TOKEN,
+            read_until_size=self._read_until_size,
+            matcher_factory=SingleGapMatcher)
 
     @property
     def filehandle(self):
@@ -75,17 +86,11 @@ class _RemoteFileProxy(object):
 
     def _read_buffer_size(self):
         try:
-            return int(self._read_numbers_with_adjustments())
+            self._tokenreader.read_until_token()
+            return int(self._read_until_size(11))
         except ValueError as e:
             raise RemoteFileReadingFailed(
                 'Failed to decode the size of the read buffer: {}'.format(e))
-
-    def _read_numbers_with_adjustments(self):
-        buf = self._read_until_size(11)
-        firstzero = buf.find('0')
-        if firstzero > 0:
-            buf = buf[firstzero:] + self._read_until_size(firstzero)
-        return buf
 
     @contextmanager
     def timeouthandling(self):
@@ -121,14 +126,8 @@ class _RemoteFileProxy(object):
         self.pterm.expect('reading stop')
 
     def close(self):
-        self._clean()
-        self.fileproxy.close()
-
-    def _clean(self):
-        self.shell.send_command('{proxy_handle}.set_originalmode()'.format(
-            proxy_handle=self.proxy_handle))
-        self.pterm.expect('originalmode set')
         self._clean_shell()
+        self.fileproxy.close()
 
     def _clean_shell(self):
         self.shell.get_prompt_from_terminal(timeout=20)
@@ -332,7 +331,7 @@ class _CopyDirRemoteFile(_RemoteFile):
 
 class _FileCopier(object):
     def __init__(self):
-        self.buffersize = 300000
+        self.buffersize = 4092
         self._buf = None
 
     def copy_file(self, sourcefile, targetfile, mode=None):

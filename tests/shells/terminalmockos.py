@@ -2,6 +2,7 @@ import abc
 import multiprocessing
 from contextlib import contextmanager
 import six
+import mock
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
@@ -99,6 +100,11 @@ class AttrContextBase(TerminalMockOsBase):
     def _mock_os_factory(self):
         """Return :class:`.AttrMockOsBase derivative instance.
         """
+
+
+class WriteContextBase(AttrContextBase):
+    def _os_patcher(self):
+        return mock.patch('os.write', side_effect=self._mock_os.write)
 
 
 class AttrProcess(multiprocessing.Process):

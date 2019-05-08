@@ -1,7 +1,10 @@
+import logging
+import traceback
 import sys
 import uuid
 from collections import namedtuple
 from contextlib import contextmanager
+
 
 if 'msgs' not in globals():
     from . import (
@@ -10,7 +13,8 @@ if 'msgs' not in globals():
         msgmanager,
         servercomm,
         pythoncmdline,
-        exceptions)
+        exceptions,
+        msgcaches)
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
@@ -20,7 +24,15 @@ CHILD_MODULES = [msgs,
                  msgmanager,
                  servercomm,
                  pythoncmdline,
-                 exceptions]
+                 exceptions,
+                 msgcaches]
+
+
+LOGGER = logging.getLogger(__name__)
+
+# Workaround for remote import bug
+msgs = msgmanager.msgs
+msghandlers.msgs = msgs
 
 
 class HandlerMap(namedtuple('HandlerMap', ['requestcls', 'handler_factory'])):
@@ -34,6 +46,7 @@ class ServerBase(msgmanager.MsgManagerBase):
     def __init__(self):
         super(ServerBase, self).__init__()
         self._server_id = str(uuid.uuid4().hex)
+        self._msgcaches = None
 
     def _update_handler_maps(self):
         self._handler_maps += [
@@ -41,6 +54,9 @@ class ServerBase(msgmanager.MsgManagerBase):
             HandlerMap(msgs.ServerIdRequest, msghandlers.ServerIdRequestHandler)]
 
     def serve(self):
+        LOGGER.debug('serving')
+        self._msgcaches = msgcaches.MsgCaches(self._retry, send_msg=self._send_reply)
+        self._strcomm.comm.set_msgcaches(self._msgcaches)
         self._send_server_id_reply()
         try:
             while True:
@@ -49,24 +65,47 @@ class ServerBase(msgmanager.MsgManagerBase):
             pass
 
     def _send_server_id_reply(self):
-        self._send_reply(msgs.ServerIdReply.create(self._server_id))
+        msg = msgs.ServerIdReply.create(self._server_id)
+        msg.set_uid(-1)
+        self._send_reply_via_cache(msg)
 
     def handle_next_msg(self):
         try:
-            self.handle_serialized(self._strcomm.read_str())
+            msg = self.deserialize(self._strcomm.read_str())
+            if isinstance(msg, msgs.Ack):
+                self._msgcaches.remove(msg)
+            else:
+                self._send_ack_if_needed(msg)
+                self._reply_cached_or_handle_msg(msg)
         except Exception as e:  # pylint: disable=broad-except
-            self._send_reply(msgs.FatalPythonErrorReply.create(e))
+            self._send_reply(msgs.FatalPythonErrorReply.create(
+                '{cls}: {msg}\nTraceback:\n{tb}'.format(
+                    cls=e.__class__.__name__,
+                    msg=str(e),
+                    tb=''.join(traceback.format_list(
+                        traceback.extract_tb(sys.exc_info()[2]))))))
             raise exceptions.ExitFromServe()
 
-    def handle_serialized(self, s):
-        self._handle_msg(self.deserialize(s))
+    def _send_ack_if_needed(self, msg):
+        if msg.is_response_expected:
+            self._send_reply(msgs.Ack.create_reply(msg))
+
+    def _reply_cached_or_handle_msg(self, msg):
+        try:
+            self._send_reply(self._msgcaches.get_msg(msg.uid))
+        except msgcaches.MsgCachesNotFound:
+            self._handle_msg(msg)
 
     def _handle_msg(self, msg):
         msghandler = self._msghandler_factories[msg.__class__.__name__]()
         msghandler.set_server_id(self._server_id)
-        msghandler.set_send_reply(self._send_reply)
+        msghandler.set_send_reply(self._send_reply_via_cache)
 
         msghandler.handle_msg(msg)
+
+    def _send_reply_via_cache(self, msg):
+        self._msgcaches.push_msg(msg)
+        self._msgcaches.send_expired()
 
     def _send_reply(self, msg):
         self._strcomm.write_str(self.serialize(msg))
@@ -144,8 +183,9 @@ class PythonServer(ServerBase):
             self.pythoncmdline.namespace[handle] = iofile
 
     @classmethod
-    def create_and_serve(cls):
+    def create_and_serve(cls, serialized_retry):
         s = cls()
         s.set_comm_factory(servercomm.ServerComm.create)
         s.set_pythoncmdline_factory(pythoncmdline.PythonCmdline)
+        s.set_retry(msgmanager.Retry.deserialize(serialized_retry))
         s.serve()

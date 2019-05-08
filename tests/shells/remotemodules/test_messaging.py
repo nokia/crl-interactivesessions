@@ -18,8 +18,15 @@ def mock_msghandler_factory():
     return fact
 
 
+class CustomServer(ServerBase):
+    def handle_serialized(self, serialized_msg):
+        msg = self.deserialize(serialized_msg)
+        msghandler = self._msghandler_factories[msg.__class__.__name__]()
+        msghandler.handle_msg(msg)
+
+
 def test_execommandrequest(mock_msghandler_factory):
-    m = ServerBase()
+    m = CustomServer()
     m.set_msghandler_factory(ExecCommandRequest.__name__, mock_msghandler_factory)
     msg = ExecCommandRequest.create('cmd')
     m.handle_serialized(m.serialize(msg))

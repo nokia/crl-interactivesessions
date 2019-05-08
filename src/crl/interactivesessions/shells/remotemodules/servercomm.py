@@ -1,33 +1,50 @@
+import time
 import sys
 import os
-if 'commbase' not in globals():
-    from . import commbase
+import select
+import fcntl
+if 'chunkcomm' not in globals():
     from . import chunkcomm
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-CHILD_MODULES = [commbase, chunkcomm]
+CHILD_MODULES = [chunkcomm]
 
 
-class ServerComm(chunkcomm.ChunkWriterBase, commbase.CommReaderBase):
+class ServerComm(chunkcomm.ChunkWriterBase, chunkcomm.ChunkReaderBase):
+
+    _sleep_in_broken_systems = 0.00005
 
     def __init__(self, infd, outfile):
+        chunkcomm.ChunkReaderBase.__init__(self)
         self.infd = infd
         self.outfile = outfile
+        self._msgcaches = None
+        self._sleep_before_read = 0
+        self._set_nonblocking_infd()
 
-    def read(self, n):
-        out = os.read(self.infd, n)
-        return out
+    def _set_nonblocking_infd(self):
+        fl = fcntl.fcntl(self.infd, fcntl.F_GETFL)
+        fcntl.fcntl(self.infd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
 
-    def read_until_size(self, n):
-        buf = ''
-        toread = n
-        while toread > 0:
-            ret = self.read(toread)
-            buf += ret
-            toread -= len(ret)
-        return buf
+    def set_msgcaches(self, msgcaches):
+        self._msgcaches = msgcaches
+
+    def _read(self, n):
+        while True:
+            r, _, _ = select.select([self.infd], [], [], *self._msgcaches.timeout_args)
+            self._msgcaches.send_expired()
+            if r:
+                try:
+                    return self._read_sleep_if_needed(n)
+                except (OSError, IOError):
+                    self._sleep_before_read = self._sleep_in_broken_systems
+
+    def _read_sleep_if_needed(self, n):
+        if self._sleep_before_read:
+            time.sleep(self._sleep_before_read)
+        return os.read(self.infd, n)
 
     def _write(self, s):
         self.outfile.write(s)

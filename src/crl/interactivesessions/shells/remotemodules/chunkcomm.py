@@ -62,6 +62,10 @@ class ChunkReaderBase(ChunkIOBase, commbase.CommReaderBase):
             read_until_size=self._read_until_size,
             matcher_factory=tokenreader.SingleGapMatcher)
 
+    @property
+    def readerror(self):
+        return ChunkReaderError
+
     def _read(self, n):
         """Read maximum n bytes
 

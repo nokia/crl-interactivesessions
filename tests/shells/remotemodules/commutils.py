@@ -5,8 +5,8 @@ import os
 import abc
 import six
 from crl.interactivesessions.shells.remotemodules.servercomm import ServerComm
-from crl.interactivesessions.shells.remotemodules.clients import Client
 from crl.interactivesessions.shells.remotemodules.chunkcomm import ChunkReaderBase
+from .clients import Client
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
