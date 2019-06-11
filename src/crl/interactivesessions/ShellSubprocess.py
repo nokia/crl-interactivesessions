@@ -110,7 +110,7 @@ class ShellSubprocess(object):
 
     @staticmethod
     def _serialize(python_object):
-        return base64.b64encode(pickle.dumps(python_object))
+        return base64.b64encode(pickle.dumps(python_object, protocol=0))
 
     @staticmethod
     def _deserialize(serialized_object):
@@ -164,7 +164,7 @@ class RemoteShellSubprocess(ShellSubprocess):
 
     def _backup(self, python_object):
         with open(self.pickled_backup, 'w') as backup:
-            pickle.dump(python_object, backup)
+            pickle.dump(python_object, backup, protocol=0)
 
     def _restore(self):
         try:

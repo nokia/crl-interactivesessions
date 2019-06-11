@@ -98,11 +98,11 @@ from crl.interactivesessions.runnerterminal import RunnerTerminalSessionBroken
 from .interactivesessionexceptions import InteractiveSessionError
 from .shells.keyauthenticatedsshshell import ShellStartError
 # pylint: disable=protected-access,unused-import
-from .shells.bashshell import BashShell
-from .shells.namespaceshell import NamespaceShell
-from .shells.pythonshell import PythonShell
-from .shells.shell import Shell
-from .shells.sshshell import SshShell
+from .shells.bashshell import BashShell  # noqa: F401
+from .shells.namespaceshell import NamespaceShell  # noqa: F401
+from .shells.pythonshell import PythonShell  # noqa: F401
+from .shells.shell import Shell  # noqa: F401
+from .shells.sshshell import SshShell  # noqa: F401
 # pylint: enable=unused-import
 
 
@@ -124,7 +124,6 @@ class UnexpectedPrompt(InteractiveSessionError):
 
 class UnknownShellState(InteractiveSessionError):
     """Raised when pop_until() results in an unexpected shell stack state."""
-    pass
 
 
 class InteractiveSession(object):
@@ -295,6 +294,9 @@ class InteractiveSession(object):
     def _pop(self):
         logger.debug("Popping shell '%s'",
                      self.current_shell().__class__.__name__)
+        logger.debug('\nBacktrace: \n%s',
+                     ''.join(traceback.format_list(traceback.extract_tb(
+                         sys.exc_info()[2]))))
 
         try:
             self._prompt_should_match()
@@ -314,7 +316,7 @@ class InteractiveSession(object):
         """
         try:
             return self.shells[-1]
-        except:
+        except Exception:
             raise RunnerTerminalSessionBroken(
                 "InteractiveSession is already closed."
             )

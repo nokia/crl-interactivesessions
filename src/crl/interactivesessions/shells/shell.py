@@ -1,10 +1,12 @@
 import re
 import logging
-from abc import ABCMeta, abstractmethod
+import abc
 from contextlib import contextmanager
+import six
 import pexpect
 from crl.interactivesessions.interactivesessionexceptions import (
     InteractiveSessionError)
+from .remotemodules.compatibility import to_string
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
@@ -54,11 +56,9 @@ class DefaultStatusTimeout(object):
 DEFAULT_STATUS_TIMEOUT = DefaultStatusTimeout()
 
 
+@six.add_metaclass(abc.ABCMeta)
 class Shell(object):
     """This is the basic interface that any new shell should implement."""
-
-    __metaclass__ = ABCMeta
-
     def __init__(self, tty_echo=False):
         self._terminal = None
         self._prompt = None
@@ -82,16 +82,15 @@ class Shell(object):
     def delaybeforesend(self, delaybeforesend):
         self._terminal.delaybeforesend = delaybeforesend
 
-    @abstractmethod
+    @abc.abstractmethod
     def get_start_cmd(self):
         """Return the command to be run in order to start this shell.
 
         This method will be called by InteractiveSession.spawn() and
         InteractiveSession.push().
         """
-        pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def start(self):
         """Initialize the new shell.
 
@@ -99,12 +98,10 @@ class Shell(object):
         get_start_cmd() and provides ability for the new shell
         to initialize itself.
         """
-        pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def exit(self):
         """Close this shell."""
-        pass
 
     def get_prompt_from_terminal(self, empty_command="", timeout=-1):
         """
@@ -151,7 +148,7 @@ class Shell(object):
 
             terminal_prompt(str): expected terminal prompt
         """
-        if isinstance(self.get_prompt(), basestring):
+        if isinstance(self.get_prompt(), six.string_types):
             return terminal_prompt == self.get_prompt()
         return terminal_prompt in self.get_prompt()
 
@@ -311,9 +308,9 @@ class Shell(object):
 
         with self._wrap_timeout_exception():
             while count > 0:
-                out = self._terminal.read_nonblocking(size=count,
-                                                      timeout=timeout)
-                self._terminal.buffer = ""
+                out = self._read_str_nonblocking(size=count,
+                                                 timeout=timeout)
+                self._terminal.buffer = b''
 
                 count -= len(out)
                 output += out
@@ -333,19 +330,28 @@ class Shell(object):
 
         if timeout:
             with self._wrap_timeout_exception():
-                output += self._terminal.read_nonblocking(size=1024,
-                                                          timeout=timeout)
+                output += self._read_str_nonblocking(size=1024,
+                                                     timeout=timeout)
 
         with self._suppress_timeout_exception(silent=True):
             while True:
-                output += self._terminal.read_nonblocking(
-                    size=1024, timeout=chunk_timeout)
-        self._terminal.buffer = ""
+                ret = self._read_str_nonblocking(size=1024, timeout=chunk_timeout)
+                LOGGER.log(_LOGLEVEL, "_read_str_nonblocking(size=1024, timeout=chunk_timeout):\
+                          ret == %s", ret)
+                output += ret
+        self._terminal.buffer = b''
 
         if output:
             LOGGER.log(_LOGLEVEL, "Read until end output:\n%s", output)
 
         return output
+
+    def _read_str_nonblocking(self, size, timeout):
+        ret = self._terminal.read_nonblocking(size=size, timeout=timeout)
+        LOGGER.log(_LOGLEVEL, "read_nonblocking(size=%s, timeout=%s): ret == %s",
+                   size, timeout, ret)
+        LOGGER.log(_LOGLEVEL, "ret in string == %s", to_string(ret))
+        return to_string(ret)
 
     def _read_until_prompt(self, timeout=-1, suppress_timeout=False):
         """Read the output of the previous command."""

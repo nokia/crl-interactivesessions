@@ -1,9 +1,9 @@
 import abc
 import os
 import signal
+import logging
 import errno
 from contextlib import contextmanager
-
 import pytest
 import six
 from crl.interactivesessions.remoterunner import (
@@ -18,7 +18,7 @@ from crl.interactivesessions.runnerexceptions import SessionInitializationFailed
 from crl.interactivesessions._terminalpools import TerminalPoolsBusy
 from .mock_killpg import MockKillpg
 
-
+LOGGER = logging.getLogger(__name__)
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
 
@@ -56,8 +56,8 @@ def test_execute_command_in_target_timeout(remoterunner):
                                                timeout=0.01)
 
     assert excinfo.value.args[0].status == -15
-    assert excinfo.value.args[0].stdout == 'out\n'
-    assert excinfo.value.args[0].stderr == ''
+    assert excinfo.value.args[0].stdout == b'out\n'
+    assert excinfo.value.args[0].stderr == b''
 
 
 @pytest.mark.usefixtures('mock_time_sleep')
@@ -94,11 +94,11 @@ def execute_timeout_command(remoterunner):
 @pytest.mark.xfail(is_windows(), reason="Windows")
 @pytest.mark.parametrize('ignoresignals,expected_exception,expected_args', [
     ([], RunnerTimeout, RunResult(status=-signal.SIGTERM,
-                                  stdout='out\n',
-                                  stderr='')),
+                                  stdout=b'out\n',
+                                  stderr=b'')),
     ([signal.SIGTERM], RunnerTimeout, RunResult(status=-9,
-                                                stdout='out\n',
-                                                stderr='')),
+                                                stdout=b'out\n',
+                                                stderr=b'')),
     ([signal.SIGTERM, 9], FailedToKillProcess, 'failedtokill')])
 def test_execute_timeout_cleaning(remoterunner,
                                   ignoresignals,
@@ -144,6 +144,8 @@ def test_progress_log(remoterunner, intcaplog):
     ret = remoterunner.execute_command_in_target(
         'echo -n progress;echo log;>&2 echo err', progress_log=True)
 
+    LOGGER.debug("===== test_progress_log: intcaplog.text == %s",
+                 intcaplog.text)
     assert ': progresslog' in intcaplog.text
     assert ret == RunResult(status='0', stdout='progresslog', stderr='err')
 
@@ -256,7 +258,7 @@ class MultiTargetsBase(object):
                 self.basecmd, target=t))
 
     def execute_command_in_one_target(self):
-        t = self.targets().next()
+        t = next(self.targets())
         self.remoterunner.execute_command_in_target(self.cmd, target=t)
 
     def assert_after_end_operation(self):

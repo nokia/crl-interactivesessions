@@ -31,8 +31,8 @@ def sessions(mock_interactivesession):
 def test_create_terminal(sessions):
     sessions.sessions.create_terminal(
         'terminal', 'dump_received', 'dump_outgoing')
-    assert (sessions.mock_interactivesession.mock_calls ==
-            [mock.call('dump_received', 'dump_outgoing')])
+    calls_of_mock = sessions.mock_interactivesession.mock_calls
+    assert calls_of_mock == [mock.call('dump_received', 'dump_outgoing')]
 
 
 def test_create_terminal_existing_name(sessions):
@@ -48,12 +48,11 @@ def test_create_terminal_existing_name(sessions):
 def test_create_terminal_default_terminal_name(sessions):
     sessions.sessions.create_terminal(
         dump_received='dump_received', dump_outgoing='dump_outgoing')
-
-    assert ([mock.call('dump_received', 'dump_outgoing')] ==
-            sessions.mock_interactivesession.mock_calls)
+    calls_of_mock = sessions.mock_interactivesession.mock_calls
+    assert [mock.call('dump_received', 'dump_outgoing')] == calls_of_mock
 
 
 def test_create_terminal_default_terminal_name_no_dump(sessions):
     sessions.sessions.create_terminal()
-    assert ([mock.call(None, None)] ==
-            sessions.mock_interactivesession.mock_calls)
+    calls_of_mock = sessions.mock_interactivesession.mock_calls
+    assert [mock.call(None, None)] == calls_of_mock

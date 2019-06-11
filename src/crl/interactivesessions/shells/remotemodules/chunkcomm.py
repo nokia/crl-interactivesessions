@@ -6,12 +6,12 @@ from io import (
 if 'commbase' not in globals():
     from . import commbase
     from . import tokenreader
-    from . import comp
+    from . import compatibility
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-CHILD_MODULES = [commbase, tokenreader, comp]
+CHILD_MODULES = [commbase, tokenreader, compatibility]
 CHUNKSIZE = 4096
 MAX_BUFFER_SIZE = 100 * CHUNKSIZE
 LOGGER = logging.getLogger(__name__)
@@ -26,16 +26,15 @@ class ChunkReaderError(Exception):
 
 class ChunkIOBase(object):
 
-    _token = '^)}>?gDYs[ULFqAkSf~|'
-    _len_width = 4
-    _chunk_tmpl = (
-        '{{token}}{{chunk_len:0{len_width}}}{{token}}{{chunk}}{{token}}'.format(
-            len_width=_len_width))
+    _token = b'^)}>?gDYs[ULFqAkSf~|'
+    _len_width = len(str(CHUNKSIZE))
+    _chunk_len_tmpl = '{{chunk_len:0{len_width}}}'.format(len_width=_len_width)
 
 
 class ChunkWriterBase(ChunkIOBase, commbase.CommWriterBase):
+
     def _write(self, s):
-        """Writes *s* to output stream.
+        """Writes Bytes *s* to output Bytes stream.
         """
         raise NotImplementedError()
 
@@ -45,12 +44,28 @@ class ChunkWriterBase(ChunkIOBase, commbase.CommWriterBase):
         raise NotImplementedError()
 
     def write(self, s):
-        for i in comp.comprange(0, len(s), CHUNKSIZE):
+        """Write string or bytes *s* with *_write*"""
+        for i in compatibility.RANGE(0, len(s), CHUNKSIZE):
             chunk = s[i:i + CHUNKSIZE]
-            self._write(self._chunk_tmpl.format(token=self._token,
-                                                chunk_len=len(chunk),
-                                                chunk=chunk))
+            self._write_with_size_and_token(chunk)
             self._flush()
+
+    def _write_with_size_and_token(self, chunk):
+        io = BytesIO()
+        for s in self._bytes_for_chunk_with_token(chunk):
+            io.write(s)
+
+        self._write(io.getvalue())
+
+    def _bytes_for_chunk_with_token(self, chunk):
+        yield self._token
+        for s in self._bytes_for_chunk(chunk):
+            yield s
+            yield self._token
+
+    def _bytes_for_chunk(self, chunk):
+        yield compatibility.to_bytes(self._chunk_len_tmpl.format(chunk_len=len(chunk)))
+        yield chunk
 
 
 class ChunkReaderBase(ChunkIOBase, commbase.CommReaderBase):
@@ -81,7 +96,6 @@ class ChunkReaderBase(ChunkIOBase, commbase.CommReaderBase):
             chunk_size = int(chunk_size_str)
             self._sharedio.write(self._read_until_size(chunk_size))
             self._verify_read_token()
-
         return self._sharedio.read(n)
 
     def _read_until_size(self, n):
@@ -108,15 +122,15 @@ class ChunkReaderBase(ChunkIOBase, commbase.CommReaderBase):
 
 class SharedBytesIO(object):
     def __init__(self):
-        self._bytesio = BytesIO()
+        self._io = BytesIO()
         self._reader = None
         self._writer = None
         self._setup_reader_and_writer()
 
     def _setup_reader_and_writer(self):
-        self._reader = PosReader(self._bytesio)
-        self._bytesio.seek(0, SEEK_END)
-        self._writer = PosWriter(self._bytesio)
+        self._reader = PosReader(self._io)
+        self._io.seek(0, SEEK_END)
+        self._writer = PosWriter(self._io)
 
     def read(self, size):
         if self._reader.pos + size > MAX_BUFFER_SIZE:
@@ -125,8 +139,8 @@ class SharedBytesIO(object):
         return self._reader.read(size)
 
     def _clean_already_read(self):
-        self._bytesio.seek(self._reader.pos)
-        self._bytesio = BytesIO(self._bytesio.read())
+        self._io.seek(self._reader.pos)
+        self._io = BytesIO(self._io.read())
         self._setup_reader_and_writer()
 
     def write(self, s):
@@ -137,7 +151,7 @@ class SharedBytesIO(object):
         return self._writer.pos - self._reader.pos
 
     def getvalue(self):
-        return self._bytesio.getvalue()
+        return self._io.getvalue()
 
 
 class PosIOBase(object):

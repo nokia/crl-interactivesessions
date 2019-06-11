@@ -1,7 +1,15 @@
 from io import BytesIO
+import logging
+
+
+if 'compatibility' not in globals():
+    from . import compatibility
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
+
+CHILD_MODULES = [compatibility]
+LOGGER = logging.getLogger(__name__)
 
 
 class MemoizeSingleArg(object):
@@ -21,26 +29,27 @@ class TokenReader(object):
         self._token = token
         self._read_until_size = read_until_size
         self._matcher = matcher_factory(token)
-        self._bytesio = BytesIO()
+        self._io = BytesIO()
         self._remaining = 0
 
     def read_until_token(self):
         self._reset()
         while self._remaining > 0:
-            already_handled = self._bytesio.tell()
+            already_handled = self._io.tell()
             s = self._buffered_read()
             self._matcher.find(s, already_handled=already_handled)
             self._remaining = len(self._token) - self._matcher.max_pass
-        return self._bytesio.getvalue()[:self._matcher.match_start]
+        ret = self._io.getvalue()[:self._matcher.match_start]
+        return ret
 
     def _reset(self):
         self._remaining = len(self._token)
-        self._bytesio = BytesIO()
+        self._io = BytesIO()
         self._matcher.reset()
 
     def _buffered_read(self):
         s = self._read_until_size(self._remaining)
-        self._bytesio.write(s)
+        self._io.write(compatibility.to_bytes(s))
         return s
 
     @property
@@ -143,7 +152,8 @@ class SingleGapMatcher(MatcherBase):
     @staticmethod
     @MemoizeSingleArg
     def _create_matchers(token):
-        return [FixedGapMatcher(token, gap_start=g) for g in range(1, len(token) + 1)]
+        return [FixedGapMatcher(token, gap_start=g)
+                for g in compatibility.RANGE(1, len(token) + 1)]
 
     def _find(self):
         for m in reversed(self._matchers):
@@ -182,7 +192,7 @@ class FixedGapMatcher(MatcherBase):
         return self._first_group_idx + self._last_group_idx - self._gap_start
 
     def _find(self):
-        for idx in xrange(len(self._s)):
+        for idx in compatibility.RANGE(len(self._s)):
             self._find_idx(idx)
 
     def _find_idx(self, idx):

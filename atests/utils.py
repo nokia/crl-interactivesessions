@@ -36,8 +36,8 @@ def is_condition(pid, condition):
 
 
 def cmdline_should_not_be_running_or_zompie(cmdline):
+    def msg_fact(p):
+        return '{}: {}'.format(cmdline, p.status())
     for p in psutil.process_iter():
         if p.cmdline() == cmdline:
-            assert (not p.is_running and
-                    p.status() != psutil.STATUS_ZOMPIE), '{}: {}'.format(
-                        cmdline, p.status())
+            assert (not p.is_running and p.status() != psutil.STATUS_ZOMBIE), msg_fact(p)

@@ -1,8 +1,8 @@
 import os
 from contextlib import contextmanager
 import logging
-from crl.interactivesessions._terminalpools import _TerminalPools
-from crl.interactivesessions.pythonterminal import PythonTerminal
+from ._terminalpools import _TerminalPools
+from .pythonterminal import PythonTerminal
 from ._targetproperties import _TargetProperties
 from ._runnerintarget import _RunnerInTarget
 from ._filecopier import (
@@ -285,7 +285,7 @@ class RemoteRunner(object):
     @staticmethod
     def set_default_target_property(property_name, property_value):
         """
-        Sets default property for all targets.
+        Sets default property for all future targets.
 
         Target specific properties override the default values. See
         \`Set Target Property\` for supported properties.
@@ -499,8 +499,8 @@ class RemoteRunner(object):
 
         **Note**
 
-        The operating system of the target may reuse the PID in case the executable
-        is terminated.
+        The operating system of the target may reuse the PID in case the
+        executable is terminated.
 
         **Example:**
 
@@ -588,7 +588,7 @@ class RemoteRunner(object):
                                   source_file,
                                   to_target,
                                   destination_dir='.',
-                                  mode='0755',
+                                  mode=oct(0o755),
                                   timeout=3600):
         """
         Copy file from one remote target to another.
@@ -680,7 +680,7 @@ class RemoteRunner(object):
     def copy_file_to_target(self,
                             source_file,
                             destination_dir='.',
-                            mode='0755',
+                            mode=oct(0o755),
                             target='default',
                             timeout=3600):
         """
@@ -727,7 +727,7 @@ class RemoteRunner(object):
     def copy_directory_to_target(self,
                                  source_dir,
                                  target_dir='.',
-                                 mode='0755',
+                                 mode=oct(0o755),
                                  target='default',
                                  timeout=3600):
         """
@@ -774,7 +774,7 @@ class RemoteRunner(object):
 
     def create_directory_in_target(self,
                                    path,
-                                   mode='0755',
+                                   mode=oct(0o755),
                                    target='default',
                                    timeout=3600):
         """

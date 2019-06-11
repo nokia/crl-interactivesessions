@@ -1,6 +1,6 @@
 import os
 import filecmp
-
+from builtins import range
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
@@ -11,9 +11,9 @@ class FilesDiffers(Exception):
 
 def create_random_file(filename, filesize, buffersize=32768):
     with open(filename, 'wb') as f:
-        numberofchunks = int(filesize) / int(buffersize)
+        numberofchunks = int(filesize) // int(buffersize)
         lastchunksize = int(filesize) % int(buffersize)
-        for _ in xrange(numberofchunks):
+        for _ in range(numberofchunks):
             f.write(os.urandom(buffersize))
         if lastchunksize:
             f.write(os.urandom(lastchunksize))

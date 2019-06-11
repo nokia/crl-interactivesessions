@@ -82,12 +82,14 @@ class MsgPythonShell(RawPythonShell):
         return r.server_id
 
     def exec_command(self, cmd, timeout=-1):
+        LOGGER.debug('====> MsgPythonShell exec_command %s, timeout=%s', cmd, timeout)
         timeout = self._terminal.timeout if timeout == -1 else timeout
         if self._fatalerror is None:
             with self._fatalerror_handling():
                 ret = self._exec_python_cmd(cmd, timeout)
 
         ret = ret if self._fatalerror is None else str(self._fatalerror)
+        LOGGER.debug('<==== MsgPythonShell exec_command %s, return %s', cmd, ret)
         return ret
 
     def get_prompt(self):

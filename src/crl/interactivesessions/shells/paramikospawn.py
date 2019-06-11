@@ -99,8 +99,8 @@ class ParamikoSpawn(SpawnBase):
         if incoming is None:
             self._read_reached_eof = True
             return buf
-        else:
-            buf += self._decoder.decode(incoming, final=False)
+
+        buf += self._decoder.decode(incoming, final=False)
         return self._read_from_queue_until_end_or_size(buf, size)
 
     def _read_from_queue_until_end_or_size(self, buf, size):

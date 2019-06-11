@@ -11,7 +11,7 @@ def serialize_from_file(path):
 
 def serialize(s):
     return "pickle.loads(base64.b64decode({!r}))".format(
-        base64.b64encode(pickle.dumps(s)))
+        base64.b64encode(pickle.dumps(s, protocol=0)))
 
 
 def _read_content(path):

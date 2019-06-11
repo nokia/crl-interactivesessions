@@ -10,12 +10,13 @@ LOGGER = logging.getLogger(__name__)
 
 @RegisterShell()
 class SpawningShell(Shell):
-
     def __init__(self, terminal_factory):
         super(SpawningShell, self).__init__()
-        self._terminal = terminal_factory()
+        self._terminal_factory = terminal_factory
 
     def spawn(self, timeout):  # pylint: disable=unused-argument
+        LOGGER.debug('======\n\n Calling SpawningShell.spawn() ===')
+        self._terminal = self._terminal_factory()
         return self._terminal
 
     def get_start_cmd(self):

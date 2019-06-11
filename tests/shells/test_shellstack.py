@@ -53,8 +53,7 @@ class ShellTester(object):
 
     def verify(self, actual_mock_calls, actual_shell):
         assert actual_mock_calls == mock.call(**self.expected_kwargs)
-        assert (actual_shell.__class__.__name__ ==
-                self.expected_class_name)
+        assert actual_shell.__class__.__name__ == self.expected_class_name
 
 
 class SshShellTester(ShellTester):

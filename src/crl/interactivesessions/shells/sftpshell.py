@@ -39,18 +39,19 @@ class SftpShell(Shell):
     def start(self):
         if self._terminal.expect(["word:", "Connection reset by peer"]) == 1:
             raise SftpConnectionError("Connection refused ({0})".format(
-                self._terminal.before.decode("utf-8") +
-                self._terminal.after.decode("utf-8")))
+                ''.join(self._terminal_contents)))
 
         self._terminal.sendline(self.password)
 
         if self._terminal.expect_exact([self._sftp_prompt, "word:"]) == 1:
             self._send_interrupt()
             raise SftpConnectionError("Bad password ({0})".format(
-                self._terminal.before.decode("utf-8") +
-                self._terminal.after.decode("utf-8")))
-
+                ''.join(self._terminal_contents)))
         return self._terminal.before.decode("utf-8")
+
+    def _terminal_contents(self):
+        for s in [self._terminal.before, self._terminal.after]:
+            yield s.decode("utf-8")
 
     def exit(self):
         self._exec_cmd("exit")

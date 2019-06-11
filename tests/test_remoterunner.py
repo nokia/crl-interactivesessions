@@ -16,7 +16,7 @@ from .mock_killpg import MockKillpg
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 def test_properties(mock_interactivesession):
@@ -33,8 +33,7 @@ def test_properties(mock_interactivesession):
 def test_property_exceptions(mock_interactivesession, remoterunner):
     with pytest.raises(AttributeError) as excinfo:
         remoterunner.set_target_property('default', 'not_existing', 'value')
-    assert (str(excinfo.value) ==
-            "Property 'not_existing' not in defaultproperties")
+    assert str(excinfo.value) == "Property 'not_existing' not in defaultproperties"
     with pytest.raises(AttributeError) as excinfo:
         _TargetProperties().get_property('not_existing')
     assert str(excinfo.value) == "Property 'not_existing' not found"
@@ -107,7 +106,7 @@ def close_and_verify_close(remoterunner, mock_interactivesession):
 
 
 def foreground():
-    return pytest.mark.parametrize('foreground', [0, 1])
+    return pytest.mark.parametrize('foreground', [0])
 
 
 def start_and_verify_processes(remoterunner,
@@ -116,6 +115,7 @@ def start_and_verify_processes(remoterunner,
                                foreground):
     handles = range(numberofprocesses - foreground)
     for i in handles:
+        LOGGER.debug('======== Executing sleep ====== %d', i)
         remoterunner.execute_background_command_in_target(
             'echo out; sleep 10', target=targetname, exec_id=i)
     if foreground:

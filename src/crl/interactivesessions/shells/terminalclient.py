@@ -60,8 +60,10 @@ class TerminalClient(MsgManagerBase):
         self.set_comm_factory(lambda: self._terminalcomm)
 
     def send_and_receive(self, msg, timeout):
-        msg.set_uid(self._uid_iter.next())
-        for t in self._retry.timeouts():
+        msg.set_uid(next(self._uid_iter))
+        LOGGER.debug('===== Starting sending msg: %s', msg)
+        for i, t in enumerate(self._retry.timeouts()):
+            LOGGER.debug('==== %dth try for msg with uid=%d', i, msg.uid)
             self.send(msg)
             try:
                 ret = self._receive_ack_or_reply(msg, t)
@@ -80,20 +82,19 @@ class TerminalClient(MsgManagerBase):
             raise TerminalClientError('Timeout')
 
     def _receive_until_reply(self, msg, timeout):
-        ret = self._receive_until_condition(timeout,
-                                            lambda r: self._is_reply(msg, r))
-        return ret
+        return self._receive_until_condition(timeout,
+                                             lambda r: self._is_reply(msg, r))
 
     def _receive_ack_or_reply(self, msg, timeout):
-        ret = self._receive_until_condition(timeout,
-                                            lambda r: self._is_reply_or_ack(msg, r))
-        return ret
+        return self._receive_until_condition(timeout,
+                                             lambda r: self._is_reply_or_ack(msg, r))
 
     def _receive_until_condition(self, timeout, condition):
         timer = Timer(timeout)
         for remaining_timeout in timer.remaining_timeouts():
             try:
                 r = self.receive(remaining_timeout)
+                LOGGER.debug('==== Received message %s', r)
             except TerminalClientError:
                 continue
             self._send_ack_if_needed(r)
@@ -120,7 +121,10 @@ class TerminalClient(MsgManagerBase):
     def receive(self, timeout):
         self._terminalcomm.set_timeout(timeout)
         with self._client_exception_wrap():
-            return self.deserialize(self._strcomm.read_str())
+            LOGGER.debug('==== reading strcomm, timeout=%d', timeout)
+            ret = self.deserialize(self._strcomm.read_str())
+            LOGGER.debug('==== returned from strcomm %s', ret)
+            return ret
 
     @contextmanager
     def _client_exception_wrap(self):

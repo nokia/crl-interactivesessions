@@ -1,5 +1,5 @@
 from crl.interactivesessions.remoteimporter import RemoteImporter
-import daemonizer
+from . import daemonizer
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
@@ -11,18 +11,18 @@ class _RemoteRunnerProxies(object):
         self.killpg = terminal.create_empty_remote_proxy()
         self.getpgid = terminal.create_empty_remote_proxy()
         self.setsid = terminal.create_empty_remote_proxy()
+        self.environ = terminal.create_empty_remote_proxy()
         self.popen = terminal.create_empty_recursive_proxy()
         self.pipe = terminal.create_empty_remote_proxy()
-        self.iter = terminal.create_empty_recursive_proxy()
-        self.os = terminal.create_empty_remote_proxy()
+        self.iter_until_empty = terminal.create_empty_recursive_proxy()
         self.daemon_popen = terminal.create_empty_remote_proxy()
         self.proxies = [self.killpg,
                         self.getpgid,
                         self.setsid,
                         self.popen,
                         self.pipe,
-                        self.iter,
-                        self.os,
+                        self.iter_until_empty,
+                        self.environ,
                         self.daemon_popen]
         self.proxy_timeout = 30  # for all non-blocking calls
         self.remoteimporter = RemoteImporter(self.terminal,
@@ -40,8 +40,9 @@ class _RemoteRunnerProxies(object):
     def _setup_proxies(self):
         self._setup_subprocess_proxies()
         self._setup_os_proxies()
-        self.iter.set_from_remote_proxy(
-            self.terminal.get_recursive_proxy('iter'))
+        self.iter_until_empty.set_from_remote_proxy(
+            self.terminal.get_recursive_proxy(
+                RemoteImporter.get_remote_obj('iter_until_empty')))
         self._setup_daemonizer_proxy()
 
     def _setup_subprocess_proxies(self):
@@ -57,8 +58,9 @@ class _RemoteRunnerProxies(object):
             self.terminal.get_proxy_object('os.getpgid', None))
         self.setsid.set_from_remote_proxy(
             self.terminal.get_proxy_object('os.setsid', None))
-        self.os.set_from_remote_proxy(
-            self.terminal.get_proxy_object('os', None))
+        self.terminal.run_python('_dictenviron = dict(os.environ)')
+        self.environ.set_from_remote_proxy(
+            self.terminal.get_proxy_object('_dictenviron', None))
 
     def _setup_daemonizer_proxy(self):
         self.remoteimporter.importmodule(daemonizer)

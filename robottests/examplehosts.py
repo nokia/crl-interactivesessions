@@ -14,6 +14,6 @@ executed as root.
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-HOST1 = {'host': 'example1.com', 'user': 'username1', 'password': 'password1'}
-HOST2 = {'host': 'example2.com', 'user': 'username2', 'password': 'password2'}
+HOST1 = {'host': 'localhost', 'user': 'testpy2', 'password': 'python2testaus'}
+HOST2 = {'host': 'localhost', 'user': 'testpy3', 'password': 'python3testaus'}
 SUDOSHELL = {'shellname': 'BashShell', 'cmd': 'sudo /bin/bash'}
