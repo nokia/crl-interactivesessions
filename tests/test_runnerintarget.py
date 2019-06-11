@@ -18,9 +18,8 @@ class RunnerInTargetBackground(object):
 
     @contextmanager
     def patch(self):
-        with mock.patch(
-            'crl.interactivesessions._runnerintarget.{}'.format(
-                self.method_processcls.cls)) as p:
+        with mock.patch('crl.interactivesessions.'
+                        '_runnerintarget.{}'.format(self.method_processcls.cls)) as p:
             self.process_cls = p
             yield self
 
@@ -44,8 +43,9 @@ def runner_in_target_background(request):
 def test_run_in_nocomm_background(executable_kwargs,
                                   runner_in_target_background):
 
-    assert (runner_in_target_background.method('cmd', **executable_kwargs) ==
-            runner_in_target_background.process_cls.return_value.run.return_value)
+    background_method = runner_in_target_background.method('cmd', **executable_kwargs)
+    bground_rtr = runner_in_target_background.process_cls.return_value.run.return_value
+    assert background_method == bground_rtr
 
     r = runner_in_target_background.runner_in_target
     runner_in_target_background.process_cls.assert_called_once_with(

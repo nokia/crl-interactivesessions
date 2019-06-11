@@ -20,7 +20,6 @@ class SudoError(InteractiveSessionError):
     """
     Raised when :class:`.SudoShell` start fails
     """
-    pass
 
 
 @RegisterShell()

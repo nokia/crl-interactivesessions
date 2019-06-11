@@ -84,5 +84,5 @@ def test_common_start(bash_terminalshell, timeout):
         bash_terminalshell.terminal.sendline('echo message')
         prompt = bash_terminalshell.shell.get_prompt()
         assert bash_terminalshell.shell.common_start() == 'message' + prompt
-        assert (mock_read_nonblocking.mock_calls[0] ==
-                mock.call(size=1024, timeout=timeout))
+        mock_calls = mock_read_nonblocking.mock_calls[0]
+        assert mock_calls == mock.call(size=1024, timeout=timeout)

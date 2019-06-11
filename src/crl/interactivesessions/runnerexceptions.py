@@ -14,7 +14,6 @@ class RunnerTerminalSessionClosed(RunnerException):
     :meth:`.RunnerTerminal.close` is already called or alternatively if the
     session is not initialized.
     """
-    pass
 
 
 class RunnerTerminalSessionBroken(RunnerException):
@@ -22,14 +21,12 @@ class RunnerTerminalSessionBroken(RunnerException):
     an exception. The original exception is embedded into the first
     argument of the new exception.
     """
-    pass
 
 
 class RunnerTerminalUnableToDeserialize(RunnerException):
     """Exception raised in case remote object returned is not
     deserialiazable by the local deserialization methods.
     """
-    pass
 
 
 class RemoteTimeout(RunnerException):
@@ -89,7 +86,6 @@ class InvalidProxySession(RunnerException):
     in case the session identifier has been changed. This occurs for example in
     case the session is recovered but the proxy is not recovered.
     """
-    pass
 
 
 class SessionInitializationFailed(RunnerException):

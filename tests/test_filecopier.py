@@ -47,22 +47,22 @@ def mock_fileproxy():
 
 
 def test_read_buffer_size_raises(mock_terminal, mock_fileproxy):
-    mock_terminal.get_session.return_value.terminal.buf = (
-        '{token}0000000cannotbedecoded'.format(token=TOKEN))
+    ret = TOKEN + b'\x01\x01\x01\x01'
+    mock_terminal.get_session.return_value.terminal.buf = (ret)
     with pytest.raises(RemoteFileReadingFailed):
         _RemoteFileProxy(mock_fileproxy, mock_terminal, 1).read(1)
 
 
 @pytest.mark.parametrize('before,expmsg', [
-    (None, ''), ('before', 'before')])
+    (None, b''), (b'before', b'before')])
 def test_read_timeout(mock_terminal, mock_fileproxy, before, expmsg):
     mock_terminal.get_session.return_value.terminal.buf = (
-        '00000000001')
+        b'00000000001')
     mock_terminal.get_session.return_value.terminal.before = before
     with pytest.raises(RemoteFileOperationTimeout) as excinfo:
         _RemoteFileProxy(mock_fileproxy, mock_terminal, 1).read(1)
 
-    assert str(excinfo.value) == expmsg
+    assert excinfo.value.args[0] == expmsg
 
 
 def test_osproxies_raises_attributeerror(mock_terminal):
@@ -71,13 +71,13 @@ def test_osproxies_raises_attributeerror(mock_terminal):
         _OsProxiesForRemoteFile(mock_terminal, 1).notexist
 
 
-@pytest.mark.parametrize('mode', ['0777', '0444', '0755'])
+@pytest.mark.parametrize('mode', [oct(0o777), oct(0o444), oct(0o755)])
 def test_localfile_chmod(tmpdir, mode):
     with tmpdir.as_cwd():
-        l = _LocalFile('local')
-        with l.open('w') as f:
+        lcl = _LocalFile('local')
+        with lcl.open('w') as f:
             f.write('content')
-        l.chmod(mode)
+        lcl.chmod(mode)
         with open('local') as f:
             assert f.read() == 'content'
         assert stat.S_IMODE(os.stat('local').st_mode) == int(mode, 8)
@@ -86,8 +86,8 @@ def test_localfile_chmod(tmpdir, mode):
 def test_localfile_with_existing_destination_dir(tmpdir):
     with tmpdir.as_cwd():
         _LocalFile(os.path.join('dir', 'f')).makedirs()
-        l = _LocalFile('dir', source_file='source')
-        with l.open('w') as f:
+        lclf = _LocalFile('dir', source_file='source')
+        with lclf.open('w') as f:
             f.write('content')
         with open(os.path.join('dir', 'source')) as f:
             assert f.read() == 'content'

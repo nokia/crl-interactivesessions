@@ -1,3 +1,6 @@
+from six import iteritems
+
+
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
 
@@ -25,7 +28,7 @@ class SessionManager(object):
             subclass_name=self.subclass_name)
 
     def close(self):
-        for _, session in self._sessions.iteritems():
+        for _, session in iteritems(self._sessions):
             session.close()
         self._sessions = {}
 

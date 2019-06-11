@@ -71,10 +71,16 @@ class TimeGen(object):
     def __init__(self):
         self._time = 0
 
+    def __iter__(self):
+        return self
+
     def consume(self, elapsed):
         self._time += elapsed
 
     def next(self):
+        return self.__next__()
+
+    def __next__(self):
         return self._time
 
     @classmethod
@@ -105,7 +111,7 @@ class FakeTime(object):
         self._time_gen = time_gen
 
     def time(self):
-        return self._time_gen.next()
+        return next(self._time_gen)
 
     @classmethod
     @contextmanager
@@ -208,7 +214,7 @@ class Sender(object):
         self._time_gen = time_gen
 
     def send_msg(self, msg):
-        msgtime = MsgTime(msg, time=self._time_gen.next())
+        msgtime = MsgTime(msg, time=next(self._time_gen))
         for m in [self.msgs, self.all_msgs]:
             m.append(msgtime)
 
@@ -241,7 +247,7 @@ def test_msgcache(msgcache_factory, msgcacheargs):
         cumul += timeout
         if cumul >= expected_timeout:
             try:
-                expected_timeout = expected_timeouts.next()
+                expected_timeout = next(expected_timeouts)
                 assert s.msgs[0].msg.uid == c.msg.uid
                 assert c.timeout == expected_timeout
                 cumul = 0

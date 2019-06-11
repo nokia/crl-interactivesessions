@@ -6,42 +6,31 @@ from collections import namedtuple
 from contextlib import contextmanager
 from crl.interactivesessions._terminalpools import _TerminalPools
 from .runnerexceptions import RemoteTimeout
+from .shells.remotemodules.compatibility import (
+    to_string, to_bytes, py23_unic, unic_to_string)
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 class RunResult(namedtuple('RunResult', ['status', 'stdout', 'stderr'])):
     __slots__ = ()
-
-    def unic(self, out):
-        try:
-            # Convert fist to unicode and add 'utf-8' encoding as __str__ must
-            # know the encoding.
-            return self._encode(unicode(out))
-        # NameError for Python3 compatibility
-        except (ValueError, TypeError, NameError):
-            return out
-
-    @staticmethod
-    def _encode(x):
-        return x.encode('utf-8')
 
     def __str__(self):
         return ('\n exit status:   {status}\n'
                 ' stdout:\n {stdout}\n'
                 ' stderr:\n {stderr}\n').format(
                     status=str(self.status),
-                    stdout=self.unic(self.stdout),
-                    stderr=self.unic(self.stderr))
+                    stdout=unic_to_string(py23_unic(self.stdout)),
+                    stderr=unic_to_string(py23_unic(self.stderr)))
 
 
 def rstrip_runresult(result):
     return RunResult(status=str(result.status),
-                     stdout=result.stdout.rstrip('\r\n'),
-                     stderr=result.stderr.rstrip('\r\n'))
+                     stdout=to_string(result.stdout).rstrip('\r\n'),
+                     stderr=to_string(result.stderr).rstrip('\r\n'))
 
 
 class RunnerTimeout(Exception):
@@ -112,7 +101,7 @@ class _ProcessBase(object):
             self.proxies.killpg(self.proxies.getpgid(self.pro.pid), sig)
         except OSError as e:
             if e.errno == errno.ESRCH:
-                logger.debug('Not terminating: process already terminated')
+                LOGGER.debug('Not terminating: process already terminated')
             else:
                 raise
 
@@ -120,7 +109,7 @@ class _ProcessBase(object):
         try:
             self._kill(9)
         except Exception as e:  # pylint: disable=broad-except
-            logger.debug('Termination of run (%s) failed: %s: %s',
+            LOGGER.debug('Termination of run (%s) failed: %s: %s',
                          self.cmd, e.__class__.__name__, e)
 
     def _initialize_terminal(self):
@@ -130,7 +119,7 @@ class _ProcessBase(object):
         self.proxies = self.terminal.proxies
         self.termination_timeout = (
             self.terminal.properties.termination_timeout)
-        self.env = self.proxies.os.environ.copy()
+        self.env = self.proxies.environ.as_local_value()
         self.env.update(self.terminal.properties.update_env_dict)
 
     def _finalize_terminal(self):
@@ -201,14 +190,18 @@ class _AsyncProcessWithoutPty(_ForegroundProcessWithoutPty):
                                                         self.timeout)
         pid = self.pro.pid
         for line in timeout_generator(lines_iterator, self.timeout):
-            tmp_stdout.append(line)
-            logger.debug("pid=%s: %s", pid, line)
+            LOGGER.debug("tmp_stdout = %s; appending line: %s",
+                         tmp_stdout,
+                         line)
+            tmp_stdout.append(to_bytes(line))
+            LOGGER.debug("pid=%s: %s", pid, to_string(line))
+
         ret = super(_AsyncProcessWithoutPty, self).communicate()
-        stdout = ''.join(tmp_stdout)
+        stdout = b''.join(tmp_stdout)
         return RunResult(ret.status, stdout, ret.stderr)
 
     def _get_lines_iterator_proxy(self, pro, timeout):
-        lines_iterator = self.proxies.iter(pro.stdout.readline, b"")
+        lines_iterator = self.proxies.iter_until_empty(pro.stdout.readline)
         lines_iterator.set_remote_proxy_timeout(timeout)
         return lines_iterator
 

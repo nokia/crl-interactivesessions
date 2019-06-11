@@ -21,7 +21,6 @@ class SshError(InteractiveSessionError):
     """
     Raised when :class:`.SshShell` start fails
     """
-    pass
 
 
 @RegisterShell()
@@ -87,7 +86,7 @@ class SshShell(BashShell):
 
     def _start_in_pexpect(self):
         prompt_re = re.compile(
-            "\[[a-zA-Z]+@[a-zA-Z]{2,4}-[0-9]*\(.+\)\s(\/.+)+\]")
+            br"\[[a-zA-Z]+@[a-zA-Z]{2,4}-[0-9]*\(.+\)\s(\/.+)+\]")
 
         logger.debug("Awaiting SSH connection to %s", self.ip)
         for password in self.passwords:
@@ -119,7 +118,6 @@ class SshShell(BashShell):
         To be implemented in derivative classes if needed
         Should raise ShellStartError if not successful.
         """
-        pass
 
     def _start_in_paramiko(self):
         return self._common_start()

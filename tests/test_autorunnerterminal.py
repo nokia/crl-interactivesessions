@@ -151,10 +151,18 @@ class NamedtupleProxy(object):
             t.instance.set_from_remote_proxy(t.create())
 
 
-def test_autorecovery_recursive(mock_interactivesession):
-    terminal = AutoRunnerTerminal()
-    p = NamedtupleProxy(terminal)
-    terminal.initialize_with_shells(shells=mock.Mock(), prepare=p.prepare)
+@pytest.fixture
+def autorunnerterminal():
+    a = AutoRunnerTerminal()
+    try:
+        yield a
+    finally:
+        a.close()
+
+
+def test_autorecovery_recursive(mock_interactivesession, autorunnerterminal):
+    p = NamedtupleProxy(autorunnerterminal)
+    autorunnerterminal.initialize_with_shells(shells=mock.Mock(), prepare=p.prepare)
     # pylint: disable=invalid-name
     A = p.create_recoverable_namedtuple('A', ['a'])
     a = A(a=0)

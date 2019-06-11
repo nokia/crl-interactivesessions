@@ -14,7 +14,6 @@ class UnexpectedOutputInPython(InteractiveSessionError):
     """
     Raised by PythonShell in case output have unexpected content
     """
-    pass
 
 
 class PythonShellBase(Shell):

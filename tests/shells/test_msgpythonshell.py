@@ -10,6 +10,9 @@ from crl.interactivesessions.shells.terminalclient import TerminalClientError
 from crl.interactivesessions.shells.remotemodules.msgmanager import (
     StrComm,
     Retry)
+from crl.interactivesessions.shells.remotemodules.compatibility import (
+    PY3,
+    to_bytes)
 from .loststrcomm import (
     LostStrComm,
     CustomTerminalComm)
@@ -53,26 +56,36 @@ def server_rubbish_msgpythonshell(server_rubbish_pythonterminal_ctx):
 
 
 def corrupt(start, s):
-    return s[:start] + len(s) * 'x'
+    return s[:start] + len(s) * b'x'
+
+
+def precorrupt(s):
+    return len(s) * b'x' + s
+
+
+def postcorrupt(s):
+    return s + len(s) * b'x'
 
 
 @pytest.fixture(params=[
-    {'probability_of_lost': '2/3'},
+    {'probability_of_lost': '1/2'},
     {'probability_of_lost': '7/11', 'modifier': lambda s: corrupt(30, s)},
-    {'probability_of_lost': '7/11', 'modifier': lambda s: corrupt(40, s)}])
+    {'probability_of_lost': '7/11', 'modifier': lambda s: corrupt(40, s)},
+    {'probability_of_lost': '1', 'modifier': precorrupt},
+    {'probability_of_lost': '1', 'modifier': postcorrupt}])
 def mock_strcomm(request):
-    l = LostStrComm(**request.param)
+    lst = LostStrComm(**request.param)
 
     def strcomm_fact(*args, **kwargs):
         s = StrComm(*args, **kwargs)
-        l.set_strcomm(s)
-        return l
+        lst.set_strcomm(s)
+        return lst
 
     with customterminalcomm_context():
         with mock.patch('crl.interactivesessions.shells.'
                         'remotemodules.msgmanager.StrComm') as p:
             p.side_effect = strcomm_fact
-            yield l
+            yield lst
 
 
 @contextmanager
@@ -139,8 +152,8 @@ def test_exec_command_server_fails(server_rubbish_msgpythonshell,
 
     after_out = server_rubbish_msgpythonshell.exec_command('a=1', timeout=1)
     for out in [in_rubbish_out, after_out]:
-        assert 'FatalPythonError' not in out
-        assert server_rubbish_pythonterminal_ctx.expected_rubbish not in out
+        assert b'FatalPythonError' not in out
+        assert server_rubbish_pythonterminal_ctx.expected_rubbish not in to_bytes(out)
 
 
 def test_exec_command_client_fails(client_rubbish_msgpythonshell,
@@ -150,8 +163,8 @@ def test_exec_command_client_fails(client_rubbish_msgpythonshell,
 
     after_out = client_rubbish_msgpythonshell.exec_command('a=1', timeout=1)
     for out in [in_rubbish_out, after_out]:
-        assert 'FatalPythonError' not in out
-        assert client_rubbish_pythonterminal_ctx.expected_rubbish not in out
+        assert b'FatalPythonError' not in out
+        assert client_rubbish_pythonterminal_ctx.expected_rubbish not in to_bytes(out)
 
 
 def test_exec_command_lostmsg(mock_strcomm, shortretry_msgpythonshell):
@@ -180,9 +193,9 @@ def test_msgpythonshell_noattrs():
 
 
 def test_msgpythonshell_chunk_reads(chunk_msgpythonshell, chunk_pythonterminal_ctx):
-    s = repr(30 * 's')
+    s = 30 * 's'
     with chunk_pythonterminal_ctx.in_context():
-        out = chunk_msgpythonshell.exec_command(s, timeout=1)
+        out = chunk_msgpythonshell.exec_command(repr(s), timeout=1)
         assert out == s
 
 
@@ -210,7 +223,7 @@ def test_msgpythonshell_send_stdout(msgpythonshell, normal_pythonterminal):
         stdout=msgpythonshell.get_stdout_str()))
 
     ret = normal_pythonterminal.read_nonblocking(len(out))
-    assert ret == out, ret
+    assert ret == to_bytes(out), ret
     assert not msgpythonshell.exec_command('a = 1')
 
 
@@ -218,7 +231,8 @@ def test_msgpythonshell_outerr(msgpythonshell):
     msgpythonshell.exec_command('import sys')
     for f in ['out', 'err']:
         cmd = 'sys.std{f}.write({f!r})'.format(f=f)
-        assert not msgpythonshell.exec_command(cmd)
+        expected_result = str(len(f)) if PY3 else ''
+        assert msgpythonshell.exec_command(cmd) == expected_result
 
 
 def test_msgpythonshell_robot_framework_stdout(normal_pythonterminal, monkeypatch):

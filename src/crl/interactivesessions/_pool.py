@@ -165,7 +165,7 @@ class _Pool(object):
         Return:
             Number of removed items.
         """
-        return self.remove_n_free(len(self.free) / n)
+        return self.remove_n_free(len(self.free) // n)
 
     def remove_n_free(self, n):
         """Remove as many as possible but at most *n* free unshared items.

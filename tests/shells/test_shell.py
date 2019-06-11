@@ -62,4 +62,4 @@ def test_status_timeout_logs(caplog):
         DEFAULT_STATUS_TIMEOUT.reset()
     s = set(['Set timeout for reading status code to 20 seconds',
              'Reset timeout for reading status code to {} seconds'.format(default)])
-    assert s.issubset(set([r.message for r in caplog.records]))
+    assert s.issubset({r.message for r in caplog.records})

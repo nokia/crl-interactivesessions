@@ -6,4 +6,3 @@ class InteractiveSessionError(Exception):
     and by :class:`.InteractiveSession` shells inherited from
     :class:`.shells.shell.Shell`.
     """
-    pass

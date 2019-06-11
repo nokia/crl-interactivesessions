@@ -5,11 +5,15 @@ import pytest
 from crl.interactivesessions.shells.remotemodules.tokenreader import (
     TokenReader,
     SingleGapMatcher)
+from crl.interactivesessions.shells.remotemodules.compatibility import (
+    RANGE,
+    to_bytes,
+    string_conversion_to_bytes)
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-CHARS = string.letters + string.digits
+CHARS = bytearray(to_bytes(string.ascii_letters + string.digits))
 
 
 @pytest.fixture
@@ -20,7 +24,7 @@ def token_with_single_gaps(token_with_fixed_gaps, token_with_random_gap):
 @pytest.fixture
 def token_with_fixed_gaps(simple_single_gaps):
     def gaps():
-        for prefix in ['', 'aa']:
+        for prefix in [b'', b'aa']:
             for t in simple_single_gaps():
                 yield prefix + t
 
@@ -30,14 +34,14 @@ def token_with_fixed_gaps(simple_single_gaps):
 @pytest.fixture
 def simple_single_gaps(token):
     def gaps():
-        for i in xrange(len(token)):
+        for i in RANGE(len(token)):
             yield token[:i] + token
-            yield token[:i] + token[i] + token[i:]
-            yield token[:i] + token[i] + 'aa' + token[i:]
+            yield token[:i] + token[i:i + 1] + token[i:]
+            yield token[:i] + token[i:i + 1] + b'aa' + token[i:]
             if i > 1:
-                yield token[:i] + token[i - 1] + token[i:]
-                yield token[:i] + 'aa' + token[i - 1] + token[i:]
-                yield token[:i] + token[i - 1] + token[i] + token[i:]
+                yield token[:i] + token[i - 1:i] + token[i:]
+                yield token[:i] + b'aa' + token[i - 1:i] + token[i:]
+                yield token[:i] + token[i - 1:i + 1] + token[i:]
 
     return gaps
 
@@ -46,7 +50,7 @@ def simple_single_gaps(token):
 def token_with_random_gap(token_with_random_single_gap_factory):
     def gaps():
         for gap_lens_sum in [0, 1, 80, 400]:
-            for _ in xrange(900 / (gap_lens_sum + 10)):
+            for _ in RANGE(900 // (gap_lens_sum + 10)):
                 yield token_with_random_single_gap_factory(gap_lens_sum)
     return gaps
 
@@ -74,26 +78,31 @@ class RandomCreator(object):
     def create(self):
         gap_chars = [GapChar(c) for c in self._token]
         gap_chars_with_gaps = random.sample(gap_chars, self._max_nbr_gaps)
-        for _ in xrange(self._sum_gap_lens):
+        for _ in RANGE(self._sum_gap_lens):
             random.choice(gap_chars_with_gaps).add_char_to_gap()
-        return ''.join(str(g) for g in gap_chars)
+        return b''.join(g.bytes for g in gap_chars)
 
 
 class GapChar(object):
     def __init__(self, c):
-        self._c = c
-        self._gap = ''
+        self._c = ascii_char_to_bytes(c)
+        self._gap = b''
 
     def add_char_to_gap(self):
-        self._gap += random.choice(CHARS)
+        self._gap += ascii_char_to_bytes(random.choice(CHARS))
 
-    def __str__(self):
-        return '{gap}{c}'.format(gap=self._gap, c=self._c)
+    @property
+    def bytes(self):
+        return self._gap + self._c
+
+
+def ascii_char_to_bytes(c):
+    return string_conversion_to_bytes(bytearray([c]).decode('utf-8'))
 
 
 @pytest.fixture
 def token():
-    return ''.join(random.sample(CHARS, 20))
+    return b''.join([to_bytes(chr(c)) for c in random.sample(CHARS, 20)])
 
 
 class ReaderError(Exception):
@@ -128,9 +137,8 @@ class Reader(object):
         return ret
 
 
-def test_singlegapreader(tokenreader_factory, token_with_single_gaps, token):
+def test_singlegapreader(tokenreader_factory, token_with_single_gaps):
     for s in token_with_single_gaps:
-        print(token, s)
         t = tokenreader_factory(s)
         before_token = t.read_until_token()
 

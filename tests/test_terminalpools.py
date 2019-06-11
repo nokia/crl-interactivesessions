@@ -115,7 +115,7 @@ def test_terminalpools_zones(mock_autorunnerterminal, terminalpools):
     pargs = PropertiesArgs(maxsize + 1)
     terminalpools.set_maxsize(maxsize)
     termzones = [TermZone('zone1'), TermZone('zone2'), TermZone()]
-    zonesize = maxsize / len(termzones)
+    zonesize = int(maxsize / len(termzones))
 
     for z in termzones:
         for _ in range(zonesize):

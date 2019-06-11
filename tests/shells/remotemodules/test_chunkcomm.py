@@ -1,3 +1,4 @@
+import logging
 import abc
 import itertools
 from collections import namedtuple
@@ -11,18 +12,20 @@ from crl.interactivesessions.shells.remotemodules.chunkcomm import (
     SharedBytesIO,
     CHUNKSIZE,
     MAX_BUFFER_SIZE)
+from crl.interactivesessions.shells.remotemodules.compatibility import to_bytes
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
 EXPECTED_TOKEN_LEN = 20
-EXPECTED_LEN_WIDTH = 4
+EXPECTED_LEN_WIDTH = len(str(CHUNKSIZE))
+LOGGER = logging.getLogger(__name__)
 
 
 class ExampleWriter(ChunkWriterBase):
     def __init__(self, value):
         self._io = BytesIO()
-        self._buf = ''
+        self._buf = b''
         self._value = value
 
     @property
@@ -34,22 +37,24 @@ class ExampleWriter(ChunkWriterBase):
         return self._value
 
     def _write(self, s):
+        LOGGER.debug('writing %s', s)
         self._buf += s
 
     def _flush(self):
+        LOGGER.debug('flushing %s', self._buf)
         self._io.write(self._buf)
-        self._buf = ''
+        self._buf = b''
 
 
 class BrokenChunkWriter(ExampleWriter):
 
     @property
     def rubbish_in_begin(self):
-        return 'rubbish-in-begin'
+        return b'rubbish-in-begin'
 
     @property
     def rubbish_in_end(self):
-        return 'rubbish-in-end'
+        return b'rubbish-in-end'
 
     @property
     def sio(self):
@@ -63,12 +68,10 @@ class BrokenChunkWriter(ExampleWriter):
         self._buf += s
 
     def _flush(self):
-        out = '{rubbish_in_begin}{buf}{rubbish_in_end}'.format(
-            rubbish_in_begin=self.rubbish_in_begin,
-            buf=self._buf,
-            rubbish_in_end=self.rubbish_in_end)
-        self._io.write(out)
-        self._buf = ''
+        self._io.write(self.rubbish_in_begin)
+        self._io.write(self._buf)
+        self._io.write(self.rubbish_in_end)
+        self._buf = b''
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -79,14 +82,13 @@ class MiddleWriterBase(BrokenChunkWriter):
 
     @property
     def _middle_rubbish(self):
-        return 'middle-rubbish'
+        return b'middle-rubbish'
 
     def _write(self, s):
         rubbish_start = self._get_rubbish_start(s)
-        addition = '{sb}{middle_rubbish}{se}'.format(
-            sb=s[:rubbish_start],
-            middle_rubbish=self._middle_rubbish,
-            se=s[rubbish_start:])
+        addition = s[:rubbish_start]
+        addition += self._middle_rubbish
+        addition += s[rubbish_start:]
         self._buf += addition
 
     @abc.abstractmethod
@@ -118,6 +120,9 @@ class LenRubbishWriter(MiddleWriterBase):
 
 
 class ExampleChunkReader(ChunkReaderBase):
+
+    count = 0
+
     def __init__(self, sio):
         super(ExampleChunkReader, self).__init__()
         self._io = sio
@@ -125,17 +130,23 @@ class ExampleChunkReader(ChunkReaderBase):
         assert isinstance(self._sharedio, SharedBytesIO)
 
     def _read(self, n):
-        return self._io.read(n)
+        if self.count > 100:
+            assert 0, 'count exceeded'
+        self.count += 1
+        ret = self._io.read(n)
+        LOGGER.debug('_read: %s, n=%d', ret, n)
+        return ret
 
     def _read_until(self, s):
         s_len = len(s)
         buf = self._io.read(s_len)
-
+        LOGGER.debug('Read buf=%s', buf)
         for i in itertools.count():
             if s == buf[i:]:
                 return buf[:-s_len]
 
             buf += self._io.read(1)
+            LOGGER.debug('Read buf=%s', buf)
 
     def getvalue(self):
         return self._sharedio.getvalue()
@@ -143,16 +154,16 @@ class ExampleChunkReader(ChunkReaderBase):
 
 class HalfChunkReader(ExampleChunkReader):
     def _read(self, n):
-        return self._io.read(n / 2 if n > 1 else n)
+        return self._io.read(n // 2 if n > 1 else n)
 
 
 @pytest.fixture(params=[
-    pytest.param('{}'.format(s), id='write {} bytes'.format(len(s))) for s in [
-        'value',
-        'v' * CHUNKSIZE,
-        'value' * CHUNKSIZE,
-        ('value' * CHUNKSIZE)[:-4],
-        'value' * CHUNKSIZE + 'additional-string']])
+    pytest.param(s, id='write {} bytes'.format(len(s))) for s in [
+        b'value',
+        b'v' * CHUNKSIZE,
+        b'value' * CHUNKSIZE,
+        (b'value' * CHUNKSIZE)[:-4],
+        b'value' * CHUNKSIZE + b'additional-string']])
 def readerwriter_factory(request, reader_factory):
     def fact(writer_factory):
         writer = writer_factory(request.param)
@@ -185,8 +196,9 @@ def test_brokenchunkwriter(readerwriter_factory, caplog):
     rw = readerwriter_factory(BrokenChunkWriter)
 
     assert rw.reader.read_until_size(len(rw.writer.value)) == rw.writer.value
-    assert rw.writer.rubbish_in_begin in caplog.text
-    assert (len(rw.writer.value) > CHUNKSIZE) == (rw.writer.rubbish_in_end in caplog.text)
+    assert rw.writer.rubbish_in_begin in to_bytes(caplog.text)
+    assert (len(rw.writer.value) > CHUNKSIZE) == (
+        rw.writer.rubbish_in_end in to_bytes(caplog.text))
 
 
 class WriterPortion(namedtuple('WriterPortion', ['writer', 'portion'])):
@@ -209,17 +221,17 @@ def test_middlerubbish(readerwriter_factory, caplog, badwriter_factory):
         rw.reader.read_until_size(len(rw.writer.value))
 
     assert 'Buffer: {!r}'.format(rw.reader.getvalue()) in str(excinfo.value)
-    assert rw.writer.rubbish_in_begin in caplog.text
+    assert rw.writer.rubbish_in_begin in to_bytes(caplog.text)
 
 
 class ExampleSharedBytesIO(SharedBytesIO):
     def getvalue(self):
-        return self._bytesio.getvalue()
+        return self._io.getvalue()
 
 
 def test_shared_bytesio_size():
     e = ExampleSharedBytesIO()
-    value = 'value' * (MAX_BUFFER_SIZE / 10)
+    value = b'value' * (MAX_BUFFER_SIZE // 10)
     for _ in range(10):
         e.write(value)
         assert e.read(len(value)) == value

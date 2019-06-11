@@ -1,4 +1,7 @@
 __copyright__ = 'Copyright (C) 2019, Nokia'
+import logging
+
+LOGGER = logging.getLogger(__name__)
 
 
 class PythonCmdline(object):
@@ -6,7 +9,7 @@ class PythonCmdline(object):
     *exec_command* from executing the same command in the interactive shell is
     the return value which is Python object instead of string representation.
     If the string representation is needed, then please use *repr*. Similarly
-    any exceptios are not returned as string but raised.
+    any exceptions are not returned as string but raised.
 
     Moreover, multiple commands separated by semi-colon do not return anything
     while in normal interactive command line, the last expression value is
@@ -47,8 +50,8 @@ class PythonCmdline(object):
             code_obj = get_code_object(self.current_cmd)
             self._multilinecmd = ''
         except (IndentationError, SyntaxError) as e:
-            if (e.args[0].startswith('unexpected EOF') or
-                    isinstance(e, IndentationError)):
+            indent_error = isinstance(e, IndentationError)
+            if (e.args[0].startswith('unexpected EOF') or indent_error):
                 self._multilinecmd += cmd + '\n'
                 # FIXME: raise specific expection instead
                 return None
@@ -63,6 +66,7 @@ class PythonCmdline(object):
 
 
 def get_code_object(cmd, mode='exec'):
+    LOGGER.debug("===== get_code_object: cmd == %s", cmd)
     try:
         return compile(cmd, '', 'eval')
     except SyntaxError:
