@@ -6,3 +6,4 @@ include stability_tests/*
 include .coveragerc
 include .pylintrc
 include README.rst
+include .flake8

@@ -1,3 +1,4 @@
+import logging
 import time
 import sys
 import os
@@ -5,11 +6,13 @@ import select
 import fcntl
 if 'chunkcomm' not in globals():
     from . import chunkcomm
+    from . import compatibility
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-CHILD_MODULES = [chunkcomm]
+CHILD_MODULES = [chunkcomm, compatibility]
+LOGGER = logging.getLogger(__name__)
 
 
 class ServerComm(chunkcomm.ChunkWriterBase, chunkcomm.ChunkReaderBase):
@@ -23,6 +26,9 @@ class ServerComm(chunkcomm.ChunkWriterBase, chunkcomm.ChunkReaderBase):
         self._msgcaches = None
         self._sleep_before_read = 0
         self._set_nonblocking_infd()
+        self._write_meth = (self.outfile.buffer.write
+                            if compatibility.PY3 else
+                            self.outfile.write)
 
     def _set_nonblocking_infd(self):
         fl = fcntl.fcntl(self.infd, fcntl.F_GETFL)
@@ -47,7 +53,7 @@ class ServerComm(chunkcomm.ChunkWriterBase, chunkcomm.ChunkReaderBase):
         return os.read(self.infd, n)
 
     def _write(self, s):
-        self.outfile.write(s)
+        self._write_meth(s)
 
     def _flush(self):
         self.outfile.flush()

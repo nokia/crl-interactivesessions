@@ -1,3 +1,5 @@
+from ._terminalpools import PoolNotFoundError
+
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
 
@@ -15,4 +17,7 @@ class PythonTerminal(object):
         return self.terminal.proxies.remoteimporter
 
     def __del__(self):
-        self.runnerintarget.put_terminal(self.terminal)
+        try:
+            self.runnerintarget.put_terminal(self.terminal)
+        except PoolNotFoundError:
+            pass

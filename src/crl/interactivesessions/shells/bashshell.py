@@ -303,7 +303,7 @@ class BashShell(AutoCompletableShell):
 
         n = self._terminal.expect(["illed", "Exit 9", self.get_prompt(),
                                    "No such process"])
-        if n == 0 or n == 1:
+        if n in (0, 1):
             self._read_until_prompt()
         elif n == 2:
             self._send_input_line("")

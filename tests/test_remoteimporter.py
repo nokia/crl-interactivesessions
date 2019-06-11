@@ -25,15 +25,13 @@ def mock_exec_in_module(request):
 @pytest.fixture(scope='function')
 def mock_sys(request):
     return create_patch(mock.patch(
-        'crl.interactivesessions.remoteimporter.sys'),
-                        request)
+        'crl.interactivesessions.remoteimporter.sys'), request)
 
 
 @pytest.fixture(scope='function')
 def mock_types_moduletype(request):
     return create_patch(mock.patch(
-        'crl.interactivesessions.remoteimporter.types.ModuleType'),
-                        request)
+        'crl.interactivesessions.remoteimporter.types.ModuleType'), request)
 
 
 def test_remoteimporter_init(mock_terminal):

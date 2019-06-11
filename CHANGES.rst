@@ -2,6 +2,10 @@
 
 CHANGES
 =======
+1.1.6
+-----
+
+- Implement python 3 compatibility
 
 1.1.5
 -----

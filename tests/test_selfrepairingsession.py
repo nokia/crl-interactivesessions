@@ -1,24 +1,18 @@
-import StringIO
-import mock
+from io import StringIO
+import sys
 import pytest
 from crl.interactivesessions.SelfRepairingSession import (
-    Unpickler, ShellSubprocessPickler)
+    ShellSubprocessPickler)
 from crl.interactivesessions.ShellSubprocess import (
     ShellSubprocess, SuccessfulExecutionResult, FailedExecutionResult)
-
+from . import custommodule
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
 
 @pytest.fixture()
 def shellsubprocesspickler():
-    return ShellSubprocessPickler(StringIO.StringIO())
-
-
-@pytest.fixture()
-def mock_unpickler_find_class():
-    with mock.patch.object(Unpickler, 'find_class') as p:
-        yield p
+    return ShellSubprocessPickler(StringIO())
 
 
 @pytest.mark.parametrize('cls_name, expected_cls', [
@@ -31,9 +25,8 @@ def test_shellsubprocesspickler_find_class(
     assert my_class == expected_cls
 
 
-def test_shellsubprocesspickler_calls_parent_find_class(
-        shellsubprocesspickler, mock_unpickler_find_class):
-    shellsubprocesspickler.find_class(
-        'some_module', 'some_class')
-    mock_unpickler_find_class.assert_called_once_with(
-        shellsubprocesspickler, 'some_module', 'some_class')
+def test_shellsubprocesspickler_calls_parent_find_class(shellsubprocesspickler):
+    internal_mod_name = '__custommodule'
+    sys.modules[internal_mod_name] = custommodule
+    assert custommodule.CustomClass == shellsubprocesspickler.find_class(
+        internal_mod_name, custommodule.CustomClass.__name__)

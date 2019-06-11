@@ -1,8 +1,8 @@
 import logging
 from crl.interactivesessions.shells.remotemodules import servers
 from crl.interactivesessions.shells.remotemodules.msgs import (
-    ExecCommandReply,
     ExecCommandErrorObj)
+from crl.interactivesessions.shells.remotemodules.compatibility import to_bytes
 from .serverterminal import (
     LineServerBase,
     LineServerExit)
@@ -14,7 +14,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class PromptPythonServer(LineServerBase, servers.PythonServer):
-    _prompt = '>>> '
+    _prompt = b'>>> '
 
     def __init__(self):
         LineServerBase.__init__(self)
@@ -39,21 +39,23 @@ class PromptPythonServer(LineServerBase, servers.PythonServer):
         servers.sys.stderr = self._inout.write_file
 
     def _handle_line(self, line):
-        self._send_reply(self._exec_and_create_reply_msg(line))
+        self._send_reply_out(self._exec_and_create_reply_msg(line))
 
     def _exec_and_create_reply_msg(self, cmd):
-        return ExecCommandReply.create(self._exec_command(cmd))
+        return self._exec_command(cmd)
 
     def _exec_command(self, cmd):
         try:
-            return self.pythoncmdline.exec_command(cmd)
+            ret = self.pythoncmdline.exec_command(cmd)
+            return b'' if ret is None else to_bytes(repr(ret))
         except SystemExit:
             raise LineServerExit
         except Exception as e:  # pylint: disable=broad-except
-            return ExecCommandErrorObj(e, cmd)
+            return str(ExecCommandErrorObj(e, cmd))
 
-    def _send_reply(self, msg):
-        self._write('{out}{prompt}'.format(out=msg.serialize_arg(), prompt=self._prompt))
+    def _send_reply_out(self, out):
+        LOGGER.debug('PromptPythonServer: %s', out)
+        self._write(out + self._prompt)
 
     def _write(self, s):
         LOGGER.debug('Writing %s', s)

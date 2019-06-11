@@ -8,7 +8,7 @@ from crl.interactivesessions._targetproperties import _TargetProperties
 from crl.interactivesessions.remoterunner import RemoteRunner
 from crl.interactivesessions._process import RunResult
 from crl.interactivesessions.shells import remotemodules
-import patch_subprocess  # pylint: disable=unused-import
+from . import patch_subprocess  # pylint: disable=unused-import; # noqa: F401
 from .shells.terminals.serverterminal import (
     ServerProcess,
     ServerTerminal)
@@ -24,9 +24,13 @@ from .shells.spawningshell import SpawningShell
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
 
-logging.basicConfig(
-    format='%(processName)s %(asctime)s.%(msecs)03d %(levelname)s %(message)s',
-    level=logging.DEBUG)
+def pytest_configure(config):  # pylint: disable=unused-argument
+    logging.basicConfig(
+        format='%(processName)s %(asctime)s.%(msecs)03d %(levelname)s %(message)s',
+        level=logging.DEBUG)
+    # TODO: remove workaround for too verbose flakes after
+    # https://github.com/tholo/pytest-flake8/issues/42 corrected
+    logging.getLogger('flake8').setLevel(logging.WARN)
 
 
 @pytest.fixture
@@ -261,9 +265,8 @@ def promptpythonserver_factory():
 
 class ChunklessServerComm(remotemodules.servercomm.ServerComm):
     def write(self, s):
-        ret = self._write(s)
+        self._write(s)
         self._flush()
-        return ret
 
 
 @pytest.fixture

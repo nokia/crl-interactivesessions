@@ -28,6 +28,6 @@ class StatusCodeVerifier(object):
             actual_status_code = self._bash_shell_with_terminal.get_status_code(
                 **self._timeout.kwargs)
             assert actual_status_code == BashServer.expected_status_code
-            assert (mock_expect_exact.mock_calls[0] ==
-                    mock.call(self._bash_shell_with_terminal.get_prompt(),
-                              timeout)), mock_expect_exact.mock_calls
+            mock_calls_value = mock_expect_exact.mock_calls[0]
+            mock_call = mock.call(self._bash_shell_with_terminal.get_prompt(), timeout)
+            assert (mock_calls_value == mock_call), mock_expect_exact.mock_calls

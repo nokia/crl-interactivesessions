@@ -1,0 +1,2 @@
+src/crl/interactivesessions/shells/__init__.py -> Python3 relative paths
+src/crl/interactivesessions/runnerterminal.py : import StringIO -> from io import StringIO

@@ -2,7 +2,6 @@ import os
 import signal
 
 import pytest
-import psutil
 
 from crl.interactivesessions.pexpectplatform import is_windows
 from .utils import verify_kill, cmdline_should_not_be_running_or_zompie

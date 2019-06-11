@@ -22,9 +22,9 @@ Set RemoteRunner Targets
 Test Broadcast Messages
     [Teardown]     RemoteRunner.Kill Background Execution    background
     RemoteRunner.Execute Background Command In Target
-    ...     for ((i=0; ;i++)) do for f in /dev/pts/*; do echo -n message.$f.$i > $f; done; done
+    ...     for ((i=0; ;i++)) do for f in /dev/pts/*; do echo -n message.$f.$i > $f;sleep 0.01; done; done
     ...     target=sudo
     FOR    ${i}    IN RANGE    10
         ${result}=    RemoteRunner.Execute Command In Target    echo hello
-        Should Be Equal    ${result.stdout}    hello
+        Should Be Equal    ${result.stdout}    hello  ${result.stdout}
     END

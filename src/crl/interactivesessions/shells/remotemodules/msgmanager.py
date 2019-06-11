@@ -1,6 +1,8 @@
 import json
+import logging
 from collections import namedtuple
 
+LOGGER = logging.getLogger(__name__)
 
 try:
     RANGE = xrange
@@ -10,11 +12,12 @@ except NameError:
 if 'msgs' not in globals():
     from . import msgs
     from . import tokenreader
+    from . import compatibility
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-CHILD_MODULES = [msgs, tokenreader]
+CHILD_MODULES = [msgs, tokenreader, compatibility]
 
 
 class StrCommReadError(Exception):
@@ -23,10 +26,9 @@ class StrCommReadError(Exception):
 
 class StrComm(object):
 
-    _token = '.;-jJ(8[)OwQaKsF=&Pu'
+    _token = b'.;-jJ(8[)OwQaKsF=&Pu'
     len_width = 11
-    str_tmpl = '{token}{{s_len:0{len_width}}}{{s}}'.format(
-        token=_token,
+    len_tmpl = '{{s_len:0{len_width}}}'.format(
         len_width=len_width)
 
     def __init__(self, comm_factory):
@@ -50,15 +52,16 @@ class StrComm(object):
         return self._tokenreader_int
 
     def write_str(self, s):
-        self.comm.write(self.str_tmpl.format(s_len=len(s), s=s))
+        text = self._token + compatibility.to_bytes(self.len_tmpl.format(s_len=len(s)))
+        self.comm.write(text + s)
 
     def read_str(self):
         while True:
             try:
                 self._tokenreader.read_until_token()
                 return self.comm.read_until_size(self._get_read_len())
-            except (StrCommReadError, self.comm.readerror):
-                pass
+            except (StrCommReadError, self.comm.readerror) as e:
+                LOGGER.debug('Error in read_str: %s: %s', e.__class__.__name__, e)
 
     def _get_read_len(self):
         len_str = self.comm.read_until_size(self.len_width)

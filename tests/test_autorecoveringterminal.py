@@ -210,7 +210,6 @@ def test_retry_run_raises(mock_interactivesession,
 
     with pytest.raises(SessionInitializationFailed) as excinfo:
         terminal.initialize_terminal()
-
     assert excinfo.value.args[0].args[0] == 'message'
 
 
