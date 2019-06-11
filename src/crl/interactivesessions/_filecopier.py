@@ -8,12 +8,37 @@ import pexpect
 from .shells.remotemodules.tokenreader import (
     TokenReader,
     SingleGapMatcher)
-from .RunnerHandler import TOKEN
-
+from .RunnerHandler import (
+    TOKEN,
+    SIZE_PACKER)
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
 LOGGER = logging.getLogger(__name__)
+BUFFER_SIZE = 4092
+
+
+class CompatibilityFile(object):
+    """Class which
+    h callable dir attributes are like Python2 dir(file) callables"""
+    @staticmethod
+    def __noop__():
+        return None
+    close = __noop__
+    fileno = __noop__
+    flush = __noop__
+    isatty = __noop__
+    next = __noop__
+    read = __noop__
+    readinto = __noop__
+    readline = __noop__
+    readlines = __noop__
+    seek = __noop__
+    tell = __noop__
+    truncate = __noop__
+    write = __noop__
+    writelines = __noop__
+    xreadlines = __noop__
 
 
 class RemoteFileReadingFailed(Exception):
@@ -34,7 +59,6 @@ class _RemoteFileProxy(object):
     the Windows case direct reading and writing to Paramiko channel would do
     the trick without encodings.
     """
-
     def __init__(self, fileproxy, terminal, timeout):
         self.fileproxy = fileproxy
         self.terminal = terminal
@@ -82,15 +106,17 @@ class _RemoteFileProxy(object):
             proxy_handle=self.proxy_handle,
             size=size))
         with self.timeouthandling():
-            return self._read_until_size(self._read_buffer_size())
+            return self._read_until_size(self._read_buffer_size(size))
 
-    def _read_buffer_size(self):
-        try:
-            self._tokenreader.read_until_token()
-            return int(self._read_until_size(11))
-        except ValueError as e:
+    def _read_buffer_size(self, maxsize):
+        self._tokenreader.read_until_token()
+        size = SIZE_PACKER.unpack(self._read_until_size(4))[0]
+        if size > maxsize:
             raise RemoteFileReadingFailed(
-                'Failed to decode the size of the read buffer: {}'.format(e))
+                "Unpacked size {s} exceeded given maximum size {m}".format(
+                    s=size,
+                    m=maxsize))
+        return size
 
     @contextmanager
     def timeouthandling(self):
@@ -100,11 +126,10 @@ class _RemoteFileProxy(object):
             raise RemoteFileOperationTimeout(self._get_terminal_output())
 
     def _get_terminal_output(self):
-        return ('' if self.pterm.before is None else
-                self.pterm.before.decode('utf-8'))
+        return b'' if self.pterm.before is None else self.pterm.before
 
     def _read_until_size(self, size):
-        buf = ''
+        buf = b''
         toread = size
         while toread > 0:
             ret = self.pterm.read_nonblocking(toread, timeout=self.timeout)
@@ -118,6 +143,7 @@ class _RemoteFileProxy(object):
             self._write(encoded_buf)
 
     def _write(self, buf):
+
         self.shell.send_command('{proxy_handle}.write({lenbuf})'.format(
             proxy_handle=self.proxy_handle,
             lenbuf=len(buf)))
@@ -218,8 +244,7 @@ class _LocalFile(object):
             destination_file)
 
     def _is_directory(self, path):
-        return (self._path.basename(path) == '' or
-                self._is_existing_directory(path))
+        return self._path.basename(path) == '' or self._is_existing_directory(path)
 
     @staticmethod
     def _is_existing_directory(path):
@@ -277,7 +302,7 @@ class _RemoteFile(_LocalFile):
     def _open(self, options):
         handle = self.terminal.get_proxy_object_from_call(
             'open', self.filename, options)
-        handle.set_proxy_spec(file)
+        handle.set_proxy_spec(CompatibilityFile())
         handle.set_remote_proxy_timeout(self.timeout)
         return _RemoteFileProxy(handle,
                                 terminal=self.terminal,
@@ -331,7 +356,7 @@ class _CopyDirRemoteFile(_RemoteFile):
 
 class _FileCopier(object):
     def __init__(self):
-        self.buffersize = 4092
+        self.buffersize = BUFFER_SIZE
         self._buf = None
 
     def copy_file(self, sourcefile, targetfile, mode=None):
@@ -365,11 +390,18 @@ class _LocalDirCopier(_FileCopier):
             timeout=timeout)
 
     def copy_directory_to_target(self):
-        self.copydirremotefile.makedirs_if_needed('0777')
+        self.copydirremotefile.makedirs_if_needed(oct(0o777))
         self._copy_directory(self.source_dir, self.copydirremotefile)
 
     def _copy_directory(self, source_dir, target):
-        root, dirnames, filenames = os.walk(source_dir).next()
+        try:
+            oswalktuple = (next(os.walk(source_dir)))
+            self._copy_directory_from_oswalktuple(oswalktuple, target)
+        except StopIteration:
+            pass
+
+    def _copy_directory_from_oswalktuple(self, oswalktuple, target):
+        root, dirnames, filenames = oswalktuple
         for f in filenames:
             self.copy_file_no_dir_create(
                 sourcefile=_LocalFile(os.path.join(root, f)),
@@ -377,6 +409,6 @@ class _LocalDirCopier(_FileCopier):
                 mode=self.mode)
         for d in dirnames:
             nexttarget = target.create_with_append(d)
-            nexttarget.makedirs_if_needed('0777')
+            nexttarget.makedirs_if_needed(oct(0o777))
             self._copy_directory(os.path.join(root, d), nexttarget)
         target.chmod(self.mode)

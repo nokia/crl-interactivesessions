@@ -23,7 +23,7 @@ class LostStrComm(object):
 
     @staticmethod
     def _default_modifier(*_):
-        return ''
+        return b''
 
     @contextmanager
     def in_lost(self):
@@ -52,8 +52,11 @@ class LostStrComm(object):
     def read_str(self):
         ret = self._strcomm.read_str()
         modified_ret = self._modified_s(ret)
+        LOGGER.debug('==== Received: %s, is lost: %d', ret, not modified_ret)
+        LOGGER.debug('==== Modified return %s', modified_ret)
         if not modified_ret:
             raise pexpect.TIMEOUT('==== Message is lost: {!r}'.format(ret))
+
         return ret
 
     def _modified_s(self, s):
@@ -80,14 +83,14 @@ class LostStrComm(object):
 class CustomTerminalComm(TerminalComm):
     def __init__(self, *args, **kwargs):
         super(CustomTerminalComm, self).__init__(*args, **kwargs)
-        self._written = ''
+        self._written = b''
 
     @property
     def written(self):
         return self._written
 
     def clear(self):
-        self._written = ''
+        self._written = b''
 
     def _write(self, s):
         self._written += s

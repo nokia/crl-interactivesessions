@@ -147,7 +147,7 @@ class _TerminalPools(object):
         raise TerminalPoolsBusy()
 
     def _get_pools_items_in_random_order(self):
-        items = self._pools.items()[:]
+        items = list(self._pools.items())
         random.shuffle(items)
         return items
 

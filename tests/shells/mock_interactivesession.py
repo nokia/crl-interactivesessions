@@ -32,7 +32,7 @@ class PythonShellEmulator(object):
         logger.debug('PythonShellEmulator running cmd: %s, timeout=%s',
                      cmd, timeout)
         ret = self._pythoncmdline.exec_command(cmd)
-        logger.debug("PythonShellEmulator response: %s", ret)
+        logger.debug("PythonShellEmulator response: %s, type=%s", ret, type(ret))
         return ret
 
     def clear_cmdline(self):

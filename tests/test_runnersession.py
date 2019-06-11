@@ -63,9 +63,9 @@ def test_getattr_non_exisitng_argument(mock_session_bases,
                               host_user='host_user',
                               host_password='host_password'),
                 non_existing_argument)
-    assert (execinfo.value.args[0] ==
-            "'RunnerSession' object has no attribute '{}'".format(
-                non_existing_argument))
+
+    nearg = "'RunnerSession' object has no attribute '{}'".format(non_existing_argument)
+    assert execinfo.value.args[0] == nearg
 
 
 RunnerSessionPublic = namedtuple('RunnerSessionPublic', ['method', 'expected'])
@@ -129,8 +129,7 @@ def runnersession_publics(request, runnersession):
             runnersession._terminal.isproxy),
         'iscallable': RunnerSessionPublic(
             runnersession.iscallable,
-            runnersession._terminal.iscallable),
-        }[request.param]
+            runnersession._terminal.iscallable)}[request.param]
 
 
 def test_getattr_public_methods(runnersession_publics):

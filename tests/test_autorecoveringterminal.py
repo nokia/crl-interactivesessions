@@ -15,12 +15,8 @@ from crl.interactivesessions.runnerexceptions import (
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
+
 logger = logging.getLogger(__name__)
-
-
-@pytest.fixture(scope='function')
-def mock_run():
-    return mock.Mock(return_value='return_value')
 
 
 @pytest.fixture(scope='function')
@@ -44,13 +40,6 @@ class RaiseMaxNTimes(object):
         if self._count <= self.maxraises:
             raise self.exception('message')
         return self.return_value
-
-
-@pytest.fixture(scope='function')
-def mock_interactivesession_spawn_raises(mock_interactivesession):
-    mspawn = mock_interactivesession.return_value.spawn
-    mspawn.side_effect = RaiseMaxNTimes(9)
-    return mock_interactivesession
 
 
 @pytest.fixture(scope='function')
@@ -210,7 +199,6 @@ def test_retry_run_raises(mock_interactivesession,
 
     with pytest.raises(SessionInitializationFailed) as excinfo:
         terminal.initialize_terminal()
-
     assert excinfo.value.args[0].args[0] == 'message'
 
 
@@ -223,19 +211,6 @@ def _create_terminal(mock_shell,
                         broken_exceptions=_BrokenException)
     terminal.initialize_terminal()
     return terminal
-
-
-def _verify_run_with_run_raises(mock_interactivesession,
-                                mock_run,
-                                terminal):
-    mock_run.side_effect = _BrokenException
-
-    with pytest.raises(_BrokenException):
-        with terminal.auto_close():
-            mock_run('arg', kwarg='kwarg')
-
-    mock_close_terminal = mock_interactivesession.return_value.close_terminal
-    mock_close_terminal.assert_called_once_with()
 
 
 def test_verify_session(mock_interactivesession,

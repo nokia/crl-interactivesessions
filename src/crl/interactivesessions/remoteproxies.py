@@ -2,8 +2,6 @@ import logging
 from functools import wraps
 from crl.interactivesessions.runnerexceptions import (
     responsehandler, asyncresponsehandler, InvalidProxySession)
-from crl.interactivesessions._runnerterminalloglevel import (
-    _QuietRunnerTerminalLogLevel)
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
@@ -83,7 +81,7 @@ class _RemoteProxy(object):
                                                       remote_name):
         if remote_name is None:
             return None
-        elif session.session_id is None:
+        if session.session_id is None:
             return 'uninitialized'
         return session.session_id
 
@@ -142,9 +140,9 @@ class _RemoteProxy(object):
         self.remote_proxy_verify()
 
     def remote_proxy_verify(self):
+        proxy_id_not_session = self._remote_proxy_session_id != self._session.session_id
         if (self._remote_proxy_session_id != 'uninitialized' and (
-                self._remote_proxy_session_id is None or
-                self._remote_proxy_session_id != self._session.session_id)):
+                self._remote_proxy_session_id is None or proxy_id_not_session)):
             raise InvalidProxySession(
                 'Local session_id: {lid}, '
                 'remote session_id: {rid}'.format(
@@ -198,7 +196,7 @@ class _RemoteProxy(object):
 
     def _get_remote_proxy_timeout(self):
         return (-1
-                if self._remote_proxy_response == asyncresponsehandler else
+                if self._remote_proxy_response is asyncresponsehandler else
                 self._remote_proxy_timeout)
 
     def remote_proxy_use_synchronous_response(self):
@@ -245,19 +243,15 @@ class _RemoteProxy(object):
         return self.__call_remote_method(self._handle, args=args,
                                          kwargs=kwargs)
 
-    @_QuietRunnerTerminalLogLevel(logging.INFO)
     def __del__(self):
-        """Delete remote references to dynamic proxy objects.
+        """Add remote references to dynamic proxy objects to remote garbage
+        collection.
 
         This is done to prevent leaking references on the remote end.
         """
         if self._is_remote_owned:
-            try:
-                self._session.run_python(
-                    'del {0}'.format(self._handle),
-                    timeout=self._get_remote_proxy_timeout())
-            except Exception:  # pylint: disable=broad-except
-                pass
+            self._session.add_handle_to_garbage(session_id=self._remote_proxy_session_id,
+                                                handle=self._handle)
 
     @autoinitialize
     def __getitem__(self, key):
@@ -343,7 +337,9 @@ class _RecursiveProxy(_RemoteProxy):
     @verify
     def next(self):
         return self.__get_recursive_proxy_or_basic_from_call(
-            '.'.join([self._handle, 'next']), args=(), kwargs={})
+            'next', args=(self,), kwargs={})
+
+    __next__ = next
 
     @autoinitialize
     def __str__(self):

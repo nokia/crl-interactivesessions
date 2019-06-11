@@ -169,8 +169,7 @@ def mock_sudoshell_bases(request):
 @pytest.fixture(scope='function')
 def mock_paramiko(request):
     return create_patch(mock.patch(
-        'crl.interactivesessions.shells.sshshell.paramiko'),
-                        request)
+        'crl.interactivesessions.shells.sshshell.paramiko'), request)
 
 
 @pytest.mark.usefixtures('mock_bash_bases', 'mock_detect_bash_prompt')
@@ -286,14 +285,14 @@ def test_get_start_cmd(monkeypatch,
 def test_sshshell_spawn(monkeypatch, mock_paramiko, kwargs, expected_kwargs):
     monkeypatch.setattr(sys, 'platform', 'win32')
     mock_paramiko.SSHClient.return_value.invoke_shell.return_value = (
-        EchoChannel(list(['recv'])))
+        EchoChannel(list([b'recv'])))
     ssh = SshShell('host', **kwargs)
     terminal = ssh.spawn(1)
     ssh.set_terminal(terminal)
     try:
         mock_paramiko.SSHClient.return_value.connect.assert_called_once_with(
             'host', **expected_kwargs)
-        assert terminal.read_nonblocking(4, 1) == 'recv'
+        assert terminal.read_nonblocking(4, 1) == b'recv'
     finally:
         ssh.exit()
         terminal.close()

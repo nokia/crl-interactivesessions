@@ -2,14 +2,16 @@
 import sys
 import traceback
 import pickle
-import StringIO
-import base64
 import logging
 import uuid
+from io import BytesIO
 from collections import namedtuple
 from contextlib import contextmanager
+from six import iteritems
 from crl.interactivesessions import RunnerHandler
 from crl.interactivesessions.shells import MsgPythonShell
+from crl.interactivesessions.shells.remotemodules.compatibility import (
+    to_string, to_bytes)
 from crl.interactivesessions.remoteproxies import (
     _RemoteProxy, _RecursiveProxy)
 from crl.interactivesessions.runnerexceptions import (
@@ -18,11 +20,12 @@ from crl.interactivesessions.runnerexceptions import (
     RunnerTerminalUnableToDeserialize,
     RemoteTimeout,
     remotetimeouthandler)
-
+from .garbagemanager import GarbageManager
+from .shells.remotemodules.compatibility import PY3
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 _HandledReturnValue = namedtuple('_HandledReturnValue', [
@@ -85,7 +88,7 @@ class _RemoteRunner(object):
 class _HandledRemoteRunner(_RemoteRunner):
 
     def _response(self, ret):
-        return _HandledReturnValue((ret.steeringstring == 'handled'), ret.obj)
+        return _HandledReturnValue(isobj=(ret.steeringstring == b'handled'), obj=ret.obj)
 
 
 class _TimeoutRemoteRunner(_RemoteRunner):
@@ -121,7 +124,7 @@ class RunnerTerminal(object):
         method='run_and_return_handled',
         args="{handle!r}, timeout={timeout}")
 
-    _DESERIALIZE_TEMPLATE = _RUNNERCALL.format(method='_deserialize',
+    _DESERIALIZE_TEMPLATE = _RUNNERCALL.format(method='deserialize',
                                                args='{obj!r}, {unpickler}')
 
     _GET_RESPONSE_TEMPLATE = _RUNNERCALL.format(
@@ -139,7 +142,7 @@ class RunnerTerminal(object):
     # Types of objects which are passed back to calller in case of
     # _RecursiveProxy instead of the proxy object. NoneType cannot
     # be pickled and thus we use here singleton instance 'None' instead.
-    HANDLED_TYPES = [None, basestring, int, float]
+    HANDLED_TYPES = None
     # unpickler to be used when deserializing data returned by remote calls
     UNPICKLER = pickle.Unpickler
 
@@ -149,6 +152,8 @@ class RunnerTerminal(object):
     TARGET_PICKLER = 'pickle'
     # unpickler to be used when deserializing incoming data on the remote end
     TARGET_UNPICKLER = 'pickle.Unpickler'
+    # maximum number of remote proxies before garbage cleaning
+    MAX_GARBAGE = 100
 
     def __init__(self):
         self.session = None
@@ -157,6 +162,8 @@ class RunnerTerminal(object):
         self._saved_delaybeforesend = None
         self.default_timeout = 3600
         self.prompt_timeout = 30
+        self._garbage_manager = GarbageManager(clean=self._clean_garbage,
+                                               max_garbage=self.MAX_GARBAGE)
 
     def set_default_timeout(self, default_timeout):
         self.default_timeout = default_timeout
@@ -214,17 +221,26 @@ class RunnerTerminal(object):
                 ' in the closed session. Command has no effect.'.format(
                     cmd=cmd, timeout=timeout))
         try:
+            self._garbage_manager.clean_if_needed(session_id=self._session_id)
             return self._run_in_session(cmd, timeout)
         except Exception as e:  # pylint: disable=broad-except
-            if isinstance(e, TypeError) and not _rerun and \
-                            'Incorrect padding' in str(e):
-                logging.debug("run - decoding error on remote end")
-                self.run(cmd, _rerun=True)
-            else:
-                self._raise_session_broken_exception(e)
+            self._raise_session_broken_exception(e)
+
+    def add_handle_to_garbage(self, session_id, handle):
+        """Adds :class:`crl.interactivesessions.remoteproxies._RemoteProxy`
+        handles (or the derivates of it) into garbage collection. The garbage
+        is cleaned during executions when the treshold *MAX_GARBAGE* is
+        exceeded.
+        """
+        if session_id == self._session_id:
+            self._garbage_manager.add(session_id=session_id, garbage=handle)
+
+    def _clean_garbage(self, garbage):
+        self._run_in_session('del {garbage}'.format(garbage=', '.join(garbage)),
+                             timeout=(2 * self.prompt_timeout))
 
     def _run_in_session(self, cmd, timeout):
-        return self._run_full_output(cmd, timeout=timeout).rstrip('\r\n')
+        return self._run_full_output(cmd, timeout=timeout)
 
     def _run_full_output(self, cmd, timeout):
         return self.get_session().current_shell().exec_command(
@@ -232,7 +248,7 @@ class RunnerTerminal(object):
 
     @staticmethod
     def _raise_session_broken_exception(exception):
-        logger.debug('%s: %s\nBacktrace: \n%s',
+        LOGGER.debug('%s: %s\nBacktrace: \n%s',
                      exception.__class__.__name__,
                      exception,
                      ''.join(traceback.format_list(traceback.extract_tb(
@@ -256,14 +272,12 @@ class RunnerTerminal(object):
 
         Any setup actions for the executor or handler should be done here.
         """
-        pass
 
     def _close(self):
         """Subclass callback, called before the executor is closed.
 
         Any cleanup actions for the executor or handler should be done here.
         """
-        pass
 
     def run_python(self, cmd, timeout=None):
         """Runs a python expression on the remote node.
@@ -360,7 +374,7 @@ class RunnerTerminal(object):
         try:
             return self.__deserialize(output, cmd)
         except Exception as e:
-            raise RunnerTerminalSessionBroken(
+            exc = RunnerTerminalSessionBroken(
                 "Unexpected output in terminal ('{output}'): "
                 "unable to deserialize "
                 "when running command '{cmd}' ({cls}: {msg})".format(
@@ -368,29 +382,31 @@ class RunnerTerminal(object):
                     cmd=cmd,
                     cls=e.__class__.__name__,
                     msg=str(e)))
+            LOGGER.info('RunnerTerminalSessionBroken: %s', exc)
+            raise exc
 
     def __deserialize(self, output, cmd):
-        output = base64.b64decode(output.rsplit('\n', 1)[-1])
-        logger.log(7, "__deserialize(cmd=%s) - pickled output: '%s'",
-                   repr(cmd), output)
+        LOGGER.debug("__deserialize(cmd=%s) - pickled output: '%s'", repr(cmd), output)
         out = self.__unpickle(output)
         return out
 
     def __unpickle(self, output):
-        outputstream = StringIO.StringIO(output)
+        outputstream = BytesIO(output)
         out = self.UNPICKLER(outputstream).load() if output else None
         return out
 
     def __identity_or_raise(self, out):
+        LOGGER.debug('__identity_or_raise: %s, type=%s', out, type(out))
         if out is None:
             raise RunnerTerminalSessionBroken('No output in terminal')
         steeringstring, pickled = out
-        outobj = self.__try_to_unpickle(pickled, steeringstring)
-        if steeringstring == 'exception':
+        steeringstring = to_bytes(steeringstring)
+        outobj = self.__try_to_unpickle(to_bytes(pickled), steeringstring)
+        if steeringstring == b'exception':
             if hasattr(outobj, 'trace'):
-                logger.debug("Remote Traceback: \n%s", ''.join(outobj.trace))
+                LOGGER.debug("Remote Traceback: \n%s", ''.join(outobj.trace))
             raise outobj
-        if steeringstring == 'timeout':
+        if steeringstring == b'timeout':
             raise RemoteTimeout(response_id=outobj)
 
         return _RemoteReturnValue(steeringstring=steeringstring, obj=outobj)
@@ -398,12 +414,12 @@ class RunnerTerminal(object):
     def __try_to_unpickle(self, output, steeringstring):
         try:
             out = self.__unpickle(output)
-            logger.debug('Unpickled output: %s', out)
+            LOGGER.debug('Unpickled output: %s', out)
             return out
         except Exception as e:
             raise RunnerTerminalUnableToDeserialize(
                 '{steeringstring}: {output} ({cls}: {msg})'.format(
-                    steeringstring=steeringstring,
+                    steeringstring=to_string(steeringstring),
                     output=repr(output),
                     cls=e.__class__.__name__,
                     msg=str(e)))
@@ -542,7 +558,7 @@ class RunnerTerminal(object):
 
     @staticmethod
     def serialize(content):
-        return base64.b64encode(pickle.dumps(content))
+        return pickle.dumps(content, protocol=0)
 
     @staticmethod
     def isproxy(obj):
@@ -566,11 +582,11 @@ class RunnerTerminal(object):
 
     def _get_python_call(self, function_name, args, kwargs):
         """Generates the code for a function call on the remote end."""
-        logger.debug("preparing call - %s(*%s, **%s)",
+        LOGGER.debug("preparing call - %s(*%s, **%s)",
                      function_name, args, kwargs)
 
         arg_list = [self._get_python_arg(arg) for arg in args]
-        for name, arg in kwargs.iteritems():
+        for name, arg in iteritems(kwargs):
             arg_list.append("{0}={1}".format(name, self._get_python_arg(arg)))
 
         return "{fn}({args})".format(
@@ -610,10 +626,10 @@ class RunnerTerminal(object):
         self.run("_handlercode = compile({handler_content}, "
                  "'RunnerHandler', 'exec')".format(
                      handler_content=(
-                         "pickle.loads(base64.b64decode({0!r}))".format(
-                             base64.b64encode(pickle.dumps(
-                                 handler_content))))))
-        # self.run("_handlercode = compile('a=1', 'RunnerHandler', 'exec')")
+                         "pickle.loads({b}{dumps!r})".format(
+                             b='' if PY3 else 'b',
+                             dumps=pickle.dumps(
+                                 handler_content, protocol=0)))))
         self.run('runnerhandlerns = {}')
         self.run("exec(_handlercode, runnerhandlerns)")
 

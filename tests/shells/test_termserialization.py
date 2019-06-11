@@ -1,14 +1,10 @@
-# pylint: disable=unused-import
-import pickle
-import base64
 import os
+import pickle  # pylint: disable=unused-import; # noqa: F401
+import base64  # pylint: disable=unused-import; # noqa: F401
 import pytest
 from crl.interactivesessions.shells.termserialization import (
     serialize_from_file,
     serialize)
-from crl.interactivesessions.shells.remotemodules.pythoncmdline import (
-    PythonCmdline)
-
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 

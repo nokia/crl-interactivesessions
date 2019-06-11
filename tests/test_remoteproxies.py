@@ -10,128 +10,79 @@ from crl.interactivesessions.runnerterminal import (
     RunnerTerminalSessionBroken,
     RunnerTerminalUnableToDeserialize,
     RemoteTimeout)
-from crl.interactivesessions.InteractiveSession import InteractiveSession
 from crl.interactivesessions.pexpectplatform import is_windows
-from crl.interactivesessions.shells.remotemodules.pythoncmdline import (
-    get_code_object)
+from .mockpythonsession import MockPythonSession
+from .garbageverifier import GarbageVerifier
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-logging.basicConfig()
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
-class MockPythonSessionClosed(Exception):
-    pass
-
-
-class MockPythonSession(object):
-
-    def __init__(self, capsys):
-        self.mock_interactivesession = mock.create_autospec(
-            InteractiveSession, spec_set=True)
-        self.mock_interactivesessionexecutor = None
-        self.multilinecmd = ''
-        self.namespace = {}
-        self.capsys = capsys
-        self._setup_mock_interactivesessionexecutor()
-
-    def set_exec_command_side_effect(self, side_effect):
-        cs = self.mock_interactivesession.current_shell.return_value
-        cs.exec_command.side_effect = side_effect
-
-    def _setup_mock_interactivesessionexecutor(self):
-        self.mock_interactivesessionexecutor = mock.Mock(
-            spec_set=['get_session'])
-        self.mock_interactivesessionexecutor.get_session.return_value = (
-            self.mock_interactivesession)
-        self.set_exec_command_side_effect(self._run)
-        self.mock_interactivesession.close_terminal.side_effect = self._close
-
-    def __getattr__(self, name):
-        return getattr(self.mock_interactivesessionexecutor, name)
-
-    def _run(self, cmd, **kwargs):  # pylint: disable=unused-argument
-        logger.debug('MockPythonSession running cmd: %s', cmd)
-
-        try:
-            code_obj = get_code_object(self.multilinecmd + cmd, mode='single')
-            self.multilinecmd = ''
-        except SyntaxError as e:
-            if e.args[0].startswith('unexpected EOF'):
-                self.multilinecmd += cmd + '\n'
-                return ''
-            raise
-        return self._get_response(code_obj)
-
-    def _get_response(self, code_obj):
-        response = eval(code_obj, self.namespace)
-        out, _ = self.capsys.readouterr()
-        response = out if response is None else out + str(response)
-        logger.debug("MockPythonSession response: %s", response)
-        return response
-
-    def _close(self):
-        self.set_exec_command_side_effect(MockPythonSessionClosed)
-        self.namespace = {}
-
-
-@pytest.fixture(scope='function')
+@pytest.fixture
 def runnerterminal():
     return RunnerTerminal()
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture
 def mock_pythonshell(request):
     return create_patch(mock.patch(
-        'crl.interactivesessions.runnerterminal.MsgPythonShell'),
-                        request)
+        'crl.interactivesessions.runnerterminal.MsgPythonShell'), request)
 
 
-def test_get_proxy_object(capsys, runnerterminal):
-    runnerterminal.initialize(session=MockPythonSession(capsys))
-    runnerterminal.run_python('handle = 0')
-    proxy = runnerterminal.get_proxy_object('handle', int)
+@pytest.fixture
+def initialized_terminal(session_factory, runnerterminal):
+    runnerterminal.initialize(session_factory())
+    return runnerterminal
+
+
+@pytest.fixture
+def session_factory(capsys):
+    def fact():
+        return MockPythonSession(capsys)
+
+    return fact
+
+
+def test_get_proxy_object(initialized_terminal):
+    initialized_terminal.run_python('handle = 0')
+    proxy = initialized_terminal.get_proxy_object('handle', int)
 
     assert proxy.as_local_value() == 0
 
 
-def test_get_proxy_object_from_call(capsys, runnerterminal):
-    runnerterminal.initialize(session=MockPythonSession(capsys))
-    runnerterminal.run("def function_name(arg, kwarg=None):")
-    runnerterminal.run("    return 'arg: {arg}, kwarg: {kwarg}'.format("
-                       "arg=arg, kwarg=kwarg)")
+def test_get_proxy_object_from_call(initialized_terminal):
+    initialized_terminal.run("def function_name(arg, kwarg=None):")
+    initialized_terminal.run("    return 'arg: {arg}, kwarg: {kwarg}'.format("
+                             "arg=arg, kwarg=kwarg)")
 
-    proxy = runnerterminal.get_proxy_object_from_call(
+    proxy = initialized_terminal.get_proxy_object_from_call(
         'function_name', 'arg', kwarg='kwarg')
     assert proxy.as_local_value() == 'arg: arg, kwarg: kwarg'
 
 
-def test_get_proxy_object_from_call_raises(capsys, runnerterminal):
-    runnerterminal.initialize(session=MockPythonSession(capsys))
-    runnerterminal.run("def function_name():")
-    runnerterminal.run("    raise Exception('message')")
+def test_get_proxy_object_from_call_raises(initialized_terminal):
+    initialized_terminal.run("def function_name():")
+    initialized_terminal.run("    raise Exception('message')")
 
     with pytest.raises(Exception) as excinfo:
-        runnerterminal.get_proxy_object_from_call('function_name')
+        initialized_terminal.get_proxy_object_from_call('function_name()')
 
     assert excinfo.value.args[0] == 'message'
 
 
-def test_import_libraries(capsys, runnerterminal):
-    runnerterminal.initialize(session=MockPythonSession(capsys))
-
-    runnerterminal.import_libraries('re')
-    reproxy = runnerterminal.get_proxy_object('re', None)
+def test_import_libraries(initialized_terminal):
+    initialized_terminal.import_libraries('re')
+    reproxy = initialized_terminal.get_proxy_object('re', None)
     assert reproxy.sub('a', 'b', 'c') == 'c'
 
 
 TupleAbc = namedtuple('TupleAbc', ['a', 'b', 'c'])
 
 
-def test_as_recursive_proxy(capsys, runnerterminal):
-    session = MockPythonSession(capsys)
+def test_as_recursive_proxy(session_factory, runnerterminal):
+    session = session_factory()
     session.namespace['TupleAbc'] = TupleAbc
     runnerterminal.initialize(session=session)
     proxy = runnerterminal.get_proxy_object_from_call('TupleAbc',
@@ -148,15 +99,15 @@ class EmptyClass(object):
     pass
 
 
-def _setup_with_empty_and_get_session(capsys, runnerterminal):
-    session = MockPythonSession(capsys)
+def _setup_with_empty_and_get_session(session_factory, runnerterminal):
+    session = session_factory()
     session.namespace['EmptyClass'] = EmptyClass
     runnerterminal.initialize(session=session)
     return session
 
 
-def test_set_attr(capsys, runnerterminal):
-    _setup_with_empty_and_get_session(capsys, runnerterminal)
+def test_set_attr(session_factory, runnerterminal):
+    _setup_with_empty_and_get_session(session_factory, runnerterminal)
     proxy = runnerterminal.get_proxy_object_from_call('EmptyClass')
 
     proxy.attribute = 0
@@ -169,43 +120,41 @@ def identity_call(*args, **kwargs):
     return (args, kwargs)
 
 
-def _get_identity_call_proxy(capsys, runnerterminal):
-    session = MockPythonSession(capsys)
+def _get_identity_call_proxy(session_factory, runnerterminal):
+    session = session_factory()
     session.namespace['identity_call'] = identity_call
     runnerterminal.initialize(session=session)
     return runnerterminal.get_proxy_object('identity_call', None)
 
 
-def test_proxy_call(capsys, runnerterminal):
-    assert _get_identity_call_proxy(capsys, runnerterminal)(
+def test_proxy_call(session_factory, runnerterminal):
+    assert _get_identity_call_proxy(session_factory, runnerterminal)(
         'arg', kwarg='kwarg') == (('arg',), {'kwarg': 'kwarg'})
 
 
-def test_recursive_proxy_call(capsys, runnerterminal):
+def test_recursive_proxy_call(session_factory, runnerterminal):
 
     recproxy = _get_identity_call_proxy(
-        capsys, runnerterminal).as_recursive_proxy()
+        session_factory, runnerterminal).as_recursive_proxy()
 
     assert recproxy('arg', kwarg='kwarg').as_local_value() == (
         ('arg',), {'kwarg': 'kwarg'})
 
 
-def test_recursive_proxy_attribute_error(capsys, runnerterminal):
-    _setup_with_empty_and_get_session(capsys, runnerterminal)
+def test_recursive_proxy_attribute_error(session_factory, runnerterminal):
+    _setup_with_empty_and_get_session(session_factory, runnerterminal)
     proxy = runnerterminal.get_proxy_object_from_call('EmptyClass')
     recproxy = proxy.as_recursive_proxy()
 
     with pytest.raises(AttributeError) as excinfo:
         # pylint: disable=pointless-statement
         recproxy.attr
-
-    assert (excinfo.value.args[0] ==
-            "'{handle}' has no attribute 'attr'".format(
-                handle=recproxy.get_proxy_handle()))
+    res = "'{handle}' has no attribute 'attr'".format(handle=recproxy.get_proxy_handle())
+    assert excinfo.value.args[0] == res
 
 
-def test_get_recursive_proxy(capsys, runnerterminal):
-    session = MockPythonSession(capsys)
+def test_get_recursive_proxy(session_factory, runnerterminal):
+    session = session_factory()
     session.namespace['identity_call'] = identity_call
     runnerterminal.initialize(session=session)
 
@@ -213,22 +162,60 @@ def test_get_recursive_proxy(capsys, runnerterminal):
     assert recproxy('value').__str__() == "(('value',), {})"
 
 
-def test_del_after_close(capsys, runnerterminal):
-    _setup_with_empty_and_get_session(capsys, runnerterminal)
+def test_del_after_close(session_factory, runnerterminal):
+    _setup_with_empty_and_get_session(session_factory, runnerterminal)
     proxy = runnerterminal.get_proxy_object_from_call('EmptyClass')
     assert proxy.as_local_value().__class__.__name__ == 'EmptyClass'
     runnerterminal.close()
     proxy.__del__()
 
 
-def test_broken_session(capsys, runnerterminal):
+def get_proxy_object_from_call(runnerterminal):
+    return runnerterminal.get_proxy_object_from_call('dict')
+
+
+def get_proxy_or_basic_from_call(runnerterminal):
+    return runnerterminal.get_proxy_or_basic_from_call('dict')
+
+
+def get_proxy_or_basic_from_call_with_timeout(runnerterminal):
+    return runnerterminal.get_proxy_or_basic_from_call_with_timeout(
+        timeout=1,
+        function_name='dict',
+        args=(),
+        kwargs={})
+
+
+@pytest.fixture(params=[get_proxy_object_from_call,
+                        get_proxy_or_basic_from_call,
+                        get_proxy_or_basic_from_call_with_timeout])
+def garbageverifier(request, initialized_terminal):
+    return GarbageVerifier(runnerterminal=initialized_terminal,
+                           proxy_factory=request.param)
+
+
+def test_garbage_cleaning(garbageverifier):
+    garbageverifier.verify_garbage_cleaning(3)
+
+
+def test_garbage_cleaning_session_reset(garbageverifier, session_factory):
+    for _ in range(2):
+        handles = garbageverifier.create_max_proxies()
+
+        garbageverifier.reset_session(session_factory())
+
+        garbageverifier.assert_all_proxies_cleaned(handles)
+        garbageverifier.verify_garbage_cleaning(2)
+
+
+def test_broken_session(session_factory, runnerterminal):
     e = Exception()
 
     # pylint: disable=unused-argument
     def raise_exception(*args, **kwargs):
         raise e
 
-    session = _setup_with_empty_and_get_session(capsys, runnerterminal)
+    session = _setup_with_empty_and_get_session(session_factory, runnerterminal)
     proxy = runnerterminal.get_proxy_object_from_call('EmptyClass')
 
     session.set_exec_command_side_effect(raise_exception)
@@ -239,8 +226,8 @@ def test_broken_session(capsys, runnerterminal):
     assert excinfo.value.args[0] == e
 
 
-def test_broken_session_in_python(capsys, runnerterminal):
-    _setup_with_empty_and_get_session(capsys, runnerterminal)
+def test_broken_session_in_python(session_factory, runnerterminal):
+    _setup_with_empty_and_get_session(session_factory, runnerterminal)
     proxy = runnerterminal.get_proxy_object_from_call('EmptyClass')
     runnerterminal.run(
         "runnerhandlerns['_RUNNERHANDLER'].run = lambda *args, **kwargs: 0")
@@ -249,13 +236,12 @@ def test_broken_session_in_python(capsys, runnerterminal):
     assert ("Unexpected output in terminal ('0'): unable to deserialize" in
             excinfo.value.args[0])
     assert 'when running command' in excinfo.value.args[0]
-    assert 'TypeError: Incorrect padding' in excinfo.value.args[0]
 
 
-def test_setup_same_session_twice(capsys, runnerterminal,
+def test_setup_same_session_twice(session_factory, runnerterminal,
                                   mock_pythonshell):
 
-    session = MockPythonSession(capsys)
+    session = session_factory()
     runnerterminal.initialize(session=session)
     runnerterminal.setup_session()
 
@@ -272,12 +258,20 @@ class MockLoad(object):
         self.count += 1
         if self.count > 1:
             raise Exception('message')
-        else:
-            return ('steeringstring', 'pickled')
+
+        return ('steeringstring', self._pickled)
+
+    @property
+    def expected_pickled(self):
+        return repr(self._pickled)
+
+    @property
+    def _pickled(self):
+        return b'pickled'
 
 
-def test_not_deserializable_objects(capsys, runnerterminal):
-    _setup_with_empty_and_get_session(capsys, runnerterminal)
+def test_not_deserializable_objects(session_factory, runnerterminal):
+    _setup_with_empty_and_get_session(session_factory, runnerterminal)
     proxy = runnerterminal.get_proxy_object_from_call('EmptyClass')
 
     t = MockLoad()
@@ -291,7 +285,8 @@ def test_not_deserializable_objects(capsys, runnerterminal):
         proxy.as_local_value()
 
     assert excinfo.value.args[0] == (
-        "steeringstring: 'pickled' (Exception: message)")
+        "steeringstring: {pickled} (Exception: message)".format(
+            pickled=t.expected_pickled))
 
 
 class Sleeper(object):
@@ -301,8 +296,8 @@ class Sleeper(object):
         return 'return'
 
 
-def _setup_sleeper_session(capsys, runnerterminal):
-    session = MockPythonSession(capsys)
+def _setup_sleeper_session(session_factory, runnerterminal):
+    session = session_factory()
     session.namespace['Sleeper'] = Sleeper
 
     runnerterminal.initialize(session=session)
@@ -337,18 +332,18 @@ def _verify_proxy_response(proxy, response):
     assert 'Remote response not got yet from response {}'.format(
         response.response_id) == str(response)
 
-    assert (proxy.get_remote_proxy_response(response, timeout=0.6) ==
-            'return')
+    res = proxy.get_remote_proxy_response(response, timeout=0.6)
+    assert res == 'return'
 
 
 @pytest.mark.parametrize('timeout,is_recursive,is_async', [
     (0.5, True, True), (0.5, False, True), (0.5, False, False)])
-def test_remote_proxy_timeout(capsys,
+def test_remote_proxy_timeout(session_factory,
                               runnerterminal,
                               timeout,
                               is_recursive,
                               is_async):
-    _setup_sleeper_session(capsys, runnerterminal)
+    _setup_sleeper_session(session_factory, runnerterminal)
     proxy = _get_proxy_from_sleeper(runnerterminal, timeout, is_recursive,
                                     is_async)
     response = _get_response_from_proxy(proxy, is_async, timeout)
@@ -358,10 +353,10 @@ def test_remote_proxy_timeout(capsys,
 
 @pytest.mark.xfail(is_windows(), reason="Windows")
 @pytest.mark.parametrize('is_recursive', [True, False])
-def test_back_to_synchronous_response(capsys,
+def test_back_to_synchronous_response(session_factory,
                                       runnerterminal,
                                       is_recursive):
-    _setup_sleeper_session(capsys, runnerterminal)
+    _setup_sleeper_session(session_factory, runnerterminal)
     proxy = _get_proxy_from_sleeper(runnerterminal,
                                     timeout=0,
                                     is_recursive=is_recursive,

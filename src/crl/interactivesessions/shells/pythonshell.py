@@ -72,7 +72,7 @@ class PythonShell(PythonShellBase):
             "with open('{0}', 'w') as _f:".format(destination_path))
         self.block_exec(
             "  _f.writelines(pickle.loads(base64.b64decode('{0}')))".format(
-                base64.b64encode(pickle.dumps(lines))))
+                base64.b64encode(pickle.dumps(lines, protocol=0))))
         self.block_end_no_output()
 
     @staticmethod

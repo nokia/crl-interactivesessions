@@ -17,11 +17,11 @@ class RubbishContextBase(WriteContextBase):
 
     @property
     def client_attr(self):
-        return ''
+        return b''
 
     @property
     def server_attr(self):
-        return ''
+        return b''
 
     @abc.abstractproperty
     def expected_rubbish(self):
@@ -41,7 +41,7 @@ class ClientRubbishContext(RubbishContextBase):
 
     @property
     def client_attr(self):
-        return 'rubbish in client write'
+        return b'rubbish in client write'
 
 
 class ServerRubbishContext(RubbishContextBase):
@@ -52,7 +52,7 @@ class ServerRubbishContext(RubbishContextBase):
 
     @property
     def server_attr(self):
-        return 'rubbish in server write'
+        return b'rubbish in server write'
 
 
 class RubbishMockOs(AttrMockOsBase):
@@ -62,9 +62,9 @@ class RubbishMockOs(AttrMockOsBase):
 
     @property
     def _default_value(self):
-        return ''
+        return b''
 
     def write(self, fd, s):
         LOGGER.debug('RubbishMockOs: write (%s) + (%s) to %d', self._attr, s, fd)
-        out = '{rubbish}{s}'.format(rubbish=self._attr, s=s)
+        out = self._attr + s
         self._write(fd, out)

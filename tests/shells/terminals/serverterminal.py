@@ -1,15 +1,20 @@
 import logging
+import sys
 import abc
 import os
 import re
 import select
 import time
-from io import BytesIO
+from io import (
+    BytesIO,
+    StringIO)
 from contextlib import contextmanager
 import mock
 import six
 import pexpect
 from pexpect.spawnbase import SpawnBase
+from crl.interactivesessions.shells.remotemodules.compatibility import (
+    to_bytes)
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
@@ -48,7 +53,7 @@ class InOut(object):
 
     def _write(self, s):
         LOGGER.debug('Writing %s to %d', repr(s), self.outfd)
-        os.write(self.outfd, s)
+        os.write(self.outfd, to_bytes(s))
 
 
 class Pipes(object):
@@ -95,13 +100,14 @@ class LineServerBase(object):
         self._handle_line(line)
 
     def _readline(self):
-        io = BytesIO()
+        io = BytesIO() if sys.version_info.major == 2 else StringIO()
+        LOGGER.debug('Reading next line')
         while True:
             c = self._read()
             if c == '\n':
                 break
             io.write(c)
-
+        LOGGER.debug('Read line: %s', io.getvalue())
         return io.getvalue()
 
     def _read(self):
@@ -249,7 +255,7 @@ class ServerTerminal(SpawnBase):
         LOGGER.info('Send control (%s) has no effect', cntrl)
 
     def read_nonblocking(self, size=1, timeout=None):
-        timeout = timeout if timeout >= 0 else None
+        timeout = timeout if timeout is not None and timeout >= 0 else None
         LOGGER.debug('read_nonblocking, size=%d', size)
         if not self._serverprocess.is_alive():
             raise pexpect.EOF('Python terminal closed')
@@ -265,6 +271,7 @@ class ServerTerminal(SpawnBase):
 
         LOGGER.info('Calling super read_nonblocking')
         ret = super(ServerTerminal, self).read_nonblocking(size, timeout=timeout)
+        LOGGER.debug('Read %s, type=%s, first=%s', ret, type(ret), ret[0] if ret else '')
         return ret
 
     def send(self, s):

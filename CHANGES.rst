@@ -2,6 +2,15 @@
 
 CHANGES
 =======
+1.2.0
+-----
+
+- Improved test coverage and added python 3 to setup
+
+1.1.6
+-----
+
+- Implement python 3 compatibility
 
 1.1.5
 -----

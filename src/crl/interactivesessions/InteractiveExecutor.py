@@ -1,5 +1,5 @@
 import logging
-
+from six import iteritems
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
@@ -36,7 +36,7 @@ class InteractiveExecutor(object):
     def _unify_timeout(timeout):
         try:
             timeout = float(timeout)
-            if timeout < 0.0001 and timeout >= 0:
+            if 0 <= timeout < 0.0001:
                 timeout = 0
             elif timeout < 0:
                 timeout = -1
@@ -54,10 +54,10 @@ class InteractiveExecutor(object):
         return self._sessions[node]
 
     def close(self):
-        for _, session in self._sessions.iteritems():
+        for _, session in iteritems(self._sessions):
             session.close()
         self._sessions = {}
 
     def reset(self):
-        for _, session in self._sessions.iteritems():
+        for _, session in iteritems(self._sessions):
             session.reset()

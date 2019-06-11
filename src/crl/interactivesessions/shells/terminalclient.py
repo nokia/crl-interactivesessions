@@ -1,8 +1,8 @@
 import logging
 import itertools
 from contextlib import contextmanager
-from monotonic import monotonic
 import pexpect
+from monotonic import monotonic
 from crl.interactivesessions.shells.shell import TimeoutError
 from .remotemodules.msgmanager import MsgManagerBase
 from .remotemodules.chunkcomm import (
@@ -60,7 +60,7 @@ class TerminalClient(MsgManagerBase):
         self.set_comm_factory(lambda: self._terminalcomm)
 
     def send_and_receive(self, msg, timeout):
-        msg.set_uid(self._uid_iter.next())
+        msg.set_uid(next(self._uid_iter))
         for t in self._retry.timeouts():
             self.send(msg)
             try:
@@ -80,14 +80,12 @@ class TerminalClient(MsgManagerBase):
             raise TerminalClientError('Timeout')
 
     def _receive_until_reply(self, msg, timeout):
-        ret = self._receive_until_condition(timeout,
-                                            lambda r: self._is_reply(msg, r))
-        return ret
+        return self._receive_until_condition(timeout,
+                                             lambda r: self._is_reply(msg, r))
 
     def _receive_ack_or_reply(self, msg, timeout):
-        ret = self._receive_until_condition(timeout,
-                                            lambda r: self._is_reply_or_ack(msg, r))
-        return ret
+        return self._receive_until_condition(timeout,
+                                             lambda r: self._is_reply_or_ack(msg, r))
 
     def _receive_until_condition(self, timeout, condition):
         timer = Timer(timeout)
