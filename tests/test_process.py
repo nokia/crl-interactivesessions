@@ -17,10 +17,7 @@ def mock_terminalpools():
 
 
 class MockNoCommBackgroundProcess(_NoCommBackgroudProcess):
-
-    @staticmethod
-    def _nocall_comm():
-        assert 0, 'Communicate called eventhough it should not'
+    pass
 
 
 def test_nocommbackgroundprocess(mock_terminalpools):

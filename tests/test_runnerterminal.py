@@ -2,9 +2,7 @@
 import pickle
 import pytest
 import mock
-from fixtureresources.mockfile import MockFile
 from fixtureresources.fixtures import create_patch
-from crl.interactivesessions import RunnerHandler
 from crl.interactivesessions.runnerterminal import RunnerTerminal
 from crl.interactivesessions.remoteproxies import _RemoteProxy
 from crl.interactivesessions.runnerexceptions import (
@@ -13,13 +11,6 @@ from crl.interactivesessions.runnerexceptions import (
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
-
-
-@pytest.fixture(scope='function')
-def mock_runnerhandler(request):
-    return create_patch(MockFile(filename=RunnerHandler.get_python_file_path(),
-                                 content='runnerhandlercontent'),
-                        request)
 
 
 @pytest.fixture(scope='function')
@@ -40,16 +31,6 @@ def mock_pythonshell(request):
     return create_patch(
         mock.patch('crl.interactivesessions.runnerterminal.MsgPythonShell'),
         request)
-
-
-@pytest.fixture(scope='function')
-def mock_pickle_dumps(request):
-    def mock_dumps(obj):
-        return 'pickle.dumps({})'.format(obj)
-
-    return create_patch(mock.patch('pickle.dumps',
-                                   side_effect=mock_dumps),
-                        request)
 
 
 @pytest.fixture(scope='function')
@@ -76,28 +57,6 @@ def mock_run_in_session_raise_no_padding(request):
         side_effect=TypeError('Some other error')), request)
 
 
-@pytest.fixture(scope='function')
-def mock_base64_b64encode(request):
-    def mock_encode(content):
-        return 'base64.b64encode({})'.format(content)
-
-    return create_patch(mock.patch('base64.b64encode',
-                                   side_effect=mock_encode),
-                        request)
-
-
-@pytest.fixture(scope='function')
-def mock_base64_b64decode(request):
-    return create_patch(mock.patch('base64.b64decode'),
-                        request)
-
-
-@pytest.fixture(scope='function')
-def mock_pickle_unpickler(request):
-    return create_patch(mock.patch('pickle.Unpickler'),
-                        request)
-
-
 class MockRemoteProxy(object):
     def __init__(self):
         self.mock = mock.create_autospec(_RemoteProxy, spec_set=True)
@@ -116,11 +75,6 @@ def mock_remoteproxy(request):
         'crl.interactivesessions.runnerterminal._RemoteProxy',
         side_effect=m.create), request)
     return m
-
-
-@pytest.fixture(scope='function')
-def mock_uuid_uuid4(request):
-    return create_patch(mock.patch('uuid.uuid4'), request)
 
 
 class ExampleException(Exception):

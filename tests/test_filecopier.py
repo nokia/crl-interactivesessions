@@ -30,9 +30,6 @@ class MockSpawn(pexpect.spawnbase.SpawnBase):
             return buf
         raise pexpect.TIMEOUT('nothing to read')
 
-    def send(self, buf):
-        pass
-
 
 @pytest.fixture(scope='function')
 def mock_terminal():
