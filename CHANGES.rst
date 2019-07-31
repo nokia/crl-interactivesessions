@@ -2,10 +2,21 @@
 
 CHANGES
 =======
+
+1.2.1
+-----
+
+- Stop using terminal after fatal failure from MsgPythonShell
+
 1.2.0
 -----
 
 - Improved test coverage and added python 3 to setup
+
+1.1.7
+-----
+
+ - Stop using terminal after fatal failure from MsgPythonShell
 
 1.1.6
 -----

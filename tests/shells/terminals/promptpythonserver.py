@@ -49,6 +49,7 @@ class PromptPythonServer(LineServerBase, servers.PythonServer):
             ret = self.pythoncmdline.exec_command(cmd)
             return b'' if ret is None else to_bytes(repr(ret))
         except SystemExit:
+            LOGGER.debug('PromptPythonServer: Exiting')
             raise LineServerExit
         except Exception as e:  # pylint: disable=broad-except
             return str(ExecCommandErrorObj(e, cmd))

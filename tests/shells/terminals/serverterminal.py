@@ -182,6 +182,9 @@ class ServerProcess(object):
     def stop(self, client_inout):
         self._server.stop(client_inout)
 
+    def terminate(self):
+        self._process.terminate()
+
     @property
     def server(self):
         return self._server
@@ -243,6 +246,9 @@ class ServerTerminal(SpawnBase):
             LOGGER.info('ServerProcess.stop() is not called, forcing exit')
             self._serverprocess.stop(self._client_inout)
         self.join(timeout=3)
+
+    def terminate(self):
+        self._serverprocess.terminate()
 
     def join(self, timeout):
         self._serverprocess.join(timeout=timeout)

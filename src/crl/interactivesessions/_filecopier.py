@@ -395,7 +395,7 @@ class _LocalDirCopier(_FileCopier):
 
     def _copy_directory(self, source_dir, target):
         try:
-            oswalktuple = (next(os.walk(source_dir)))
+            oswalktuple = next(os.walk(source_dir))
             self._copy_directory_from_oswalktuple(oswalktuple, target)
         except StopIteration:
             pass
@@ -411,4 +411,5 @@ class _LocalDirCopier(_FileCopier):
             nexttarget = target.create_with_append(d)
             nexttarget.makedirs_if_needed(oct(0o777))
             self._copy_directory(os.path.join(root, d), nexttarget)
+
         target.chmod(self.mode)

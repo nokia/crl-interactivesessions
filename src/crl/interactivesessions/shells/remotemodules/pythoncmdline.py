@@ -66,7 +66,6 @@ class PythonCmdline(object):
 
 
 def get_code_object(cmd, mode='exec'):
-    LOGGER.debug("===== get_code_object: cmd == %s", cmd)
     try:
         return compile(cmd, '', 'eval')
     except SyntaxError:

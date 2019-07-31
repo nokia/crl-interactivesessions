@@ -21,6 +21,10 @@ class TerminalClientError(Exception):
     pass
 
 
+class TerminalClientFatalError(TerminalClientError):
+    pass
+
+
 class TimerTimeout(Exception):
     pass
 
@@ -61,23 +65,38 @@ class TerminalClient(MsgManagerBase):
 
     def send_and_receive(self, msg, timeout):
         msg.set_uid(next(self._uid_iter))
+        for received_msg in self._received_msgs_for_msg(msg):
+            if isinstance(received_msg, Ack):
+                return self._try_to_receive_until_reply(msg, timeout)
+
+            return received_msg
+
+        return self._final_try_to_receive_until_reply(msg, timeout)
+
+    def _received_msgs_for_msg(self, msg):
         for t in self._retry.timeouts():
             self.send(msg)
             try:
-                ret = self._receive_ack_or_reply(msg, t)
-                if isinstance(ret, Ack):
-                    break
-                return ret
+                yield self._receive_ack_or_reply(msg, t)
+
             except (TerminalClientError, TimerTimeout) as e:
                 LOGGER.debug('No reply yet for message uid %s: %s', msg.uid, e)
 
-        return self._try_to_receive_until_reply(msg, timeout)
-
     def _try_to_receive_until_reply(self, msg, timeout):
-        try:
+        with self._raise_in_timertimeout(TerminalClientError('Timeout')):
             return self._receive_until_reply(msg, timeout)
+
+    def _final_try_to_receive_until_reply(self, msg, timeout):
+        with self._raise_in_timertimeout(TerminalClientFatalError('Connection broken')):
+            return self._receive_until_reply(msg, timeout)
+
+    @staticmethod
+    @contextmanager
+    def _raise_in_timertimeout(exception):
+        try:
+            yield
         except TimerTimeout:
-            raise TerminalClientError('Timeout')
+            raise exception
 
     def _receive_until_reply(self, msg, timeout):
         return self._receive_until_condition(timeout,
@@ -126,7 +145,6 @@ class TerminalClient(MsgManagerBase):
             try:
                 yield None
             except (pexpect.TIMEOUT, TimeoutError) as e:
-                LOGGER.debug('Timeout raised')
                 raise TerminalClientError(e)
             except Exception as e:
                 LOGGER.debug('Raised exception: %s: %s', e.__class__.__name__, e)

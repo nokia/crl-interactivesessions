@@ -3,4 +3,4 @@ SCRIPT_DIR="$(dirname $(readlink -f ${BASH_SOURCE[0]}))"
 docker build --rm -t test .
 docker run \
 -v ${SCRIPT_DIR}/..:/work \
---rm test \
+--rm test
