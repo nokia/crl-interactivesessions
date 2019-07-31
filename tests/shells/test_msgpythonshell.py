@@ -6,7 +6,9 @@ import mock
 import pytest
 import pexpect
 from crl.interactivesessions.shells.msgpythonshell import MsgPythonShell
-from crl.interactivesessions.shells.terminalclient import TerminalClientError
+from crl.interactivesessions.shells.terminalclient import (
+    TerminalClientError,
+    TerminalClientFatalError)
 from crl.interactivesessions.shells.remotemodules.msgmanager import (
     StrComm,
     Retry)
@@ -34,13 +36,32 @@ def msgpythonshell(normal_pythonterminal):
 
 
 @pytest.fixture
-def shortretry_msgpythonshell(mock_strcomm, normal_pythonterminal):
-    try:
-        MsgPythonShell.set_retry(Retry(tries=20, interval=0.4, timeout=0.5))
-        with msgpythonshell_context(normal_pythonterminal) as m:
-            yield m
-    finally:
-        MsgPythonShell.reset_retry()
+def shortretry_msgpythonshell(retry_shellcontext):
+    with retry_shellcontext(Retry(tries=20, interval=0.4, timeout=0.5)) as s:
+        yield s
+
+
+@pytest.fixture
+def terminate_msgpythonshell(retry_shellcontext, normal_pythonterminal):
+    with retry_shellcontext(Retry(tries=3, interval=0.4, timeout=0.5)) as s:
+        try:
+            yield s
+        finally:
+            normal_pythonterminal.terminate()
+
+
+@pytest.fixture
+def retry_shellcontext(mock_strcomm, normal_pythonterminal):
+    @contextmanager
+    def ctx(retry):
+        try:
+            MsgPythonShell.set_retry(retry)
+            with msgpythonshell_context(normal_pythonterminal) as m:
+                yield m
+        finally:
+            MsgPythonShell.reset_retry()
+
+    return ctx
 
 
 @pytest.fixture
@@ -67,12 +88,7 @@ def postcorrupt(s):
     return s + len(s) * b'x'
 
 
-@pytest.fixture(params=[
-    {'probability_of_lost': '1/2'},
-    {'probability_of_lost': '7/11', 'modifier': lambda s: corrupt(30, s)},
-    {'probability_of_lost': '7/11', 'modifier': lambda s: corrupt(40, s)},
-    {'probability_of_lost': '1', 'modifier': precorrupt},
-    {'probability_of_lost': '1', 'modifier': postcorrupt}])
+@pytest.fixture
 def mock_strcomm(request):
     lst = LostStrComm(**request.param)
 
@@ -167,6 +183,16 @@ def test_exec_command_client_fails(client_rubbish_msgpythonshell,
         assert client_rubbish_pythonterminal_ctx.expected_rubbish not in to_bytes(out)
 
 
+def some_lost_strcomm():
+    return pytest.mark.parametrize('mock_strcomm', [
+        {'probability_of_lost': '4/11'},
+        {'probability_of_lost': '4/11', 'modifier': lambda s: corrupt(30, s)},
+        {'probability_of_lost': '4/11', 'modifier': lambda s: corrupt(40, s)},
+        {'probability_of_lost': '1', 'modifier': precorrupt},
+        {'probability_of_lost': '1', 'modifier': postcorrupt}], indirect=True)
+
+
+@some_lost_strcomm()
 def test_exec_command_lostmsg(mock_strcomm, shortretry_msgpythonshell):
     shell = shortretry_msgpythonshell
     shell.exec_command('s = 0', timeout=2)
@@ -180,10 +206,31 @@ def test_exec_command_lostmsg(mock_strcomm, shortretry_msgpythonshell):
     shell.exec_command('s', timeout=2)
 
 
-def test_exec_command_timeout(shortretry_msgpythonshell, normal_pythonterminal):
-    with normal_pythonterminal.in_raise_read_timeout():
-        with pytest.raises(TerminalClientError):
-            shortretry_msgpythonshell.exec_command('a=1', timeout=0.1)
+@pytest.mark.parametrize('mock_strcomm', [{'probability_of_lost': '1'}],
+                         indirect=True)
+def test_exec_command_all_lost(mock_strcomm, terminate_msgpythonshell):
+    broken_msg = 'Connection broken'
+    with mock_strcomm.in_lost():
+        _expect_broken_shell(terminate_msgpythonshell, broken_msg)
+
+    assert broken_msg in terminate_msgpythonshell.exec_command('s = 0')
+
+
+def _expect_broken_shell(shell, broken_msg):
+    with pytest.raises(TerminalClientFatalError) as excinfo:
+        shell.exec_command('s = 0', timeout=1)
+
+    assert broken_msg in str(excinfo.value)
+
+
+@some_lost_strcomm()
+def test_exec_command_timeout(mock_strcomm, shortretry_msgpythonshell):
+    shortretry_msgpythonshell.exec_command('import time')
+    with mock_strcomm.in_lost():
+        with pytest.raises(TerminalClientError) as excinfo:
+            shortretry_msgpythonshell.exec_command('time.sleep(0.5)', timeout=0.1)
+
+    assert 'Timeout' in str(excinfo.value)
 
 
 def test_msgpythonshell_noattrs():

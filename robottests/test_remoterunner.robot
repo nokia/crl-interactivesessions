@@ -51,22 +51,18 @@ Get Pools Maxsize
     ${pool_obj}=     Get Library Instance  Pools
     [Return]    ${pool_obj.maxsize}
 
-
 Remove Filepath In Target
     [Arguments]  ${target}  ${path}
     RemoteRunner.Execute Command In Target    rm ${path}  target=${target}
-
 
 Remove Files Locally And In Target
     Run Process  rm  targetlocal  remotescriptfile
     Remove Filepath In Target  target1  ./targetlocal
     Remove Filepath In Target  target2  ./targetlocal
 
-
 Remove Directory In Target
     [Arguments]     ${target}   ${dir}
     RemoteRunner.Execute Command In Target  rm -rf ${dir}   target=${target}
-
 
 Set RemoteRunner Targets
     RemoteRunner.Set Target    shelldicts=${SHELLDICTS1}
@@ -78,13 +74,11 @@ Set RemoteRunner Targets
 Create Random File
     filehelper.Create Random File    targetlocal    100000
 
-
 Verify Run
     [Arguments]   ${ret}    ${expected_status}
     Should Be Equal As Integers    ${ret.status}    ${expected_status}
     Should Be Equal   ${ret.stdout}    out
     Should Be Equal   ${ret.stderr}    err
-
 
 Test Execute Nohup Background In Target
     [Arguments]  ${target}
@@ -96,13 +90,11 @@ Test Execute Nohup Background In Target
     ...             target=${target}
     Should Be Equal As Integers     ${ret.status}   0   ${ret}
 
-
 Test Execute Command In Target
     [Arguments]  ${target}
     ${ret}=    RemoteRunner.Execute Command In Target
     ...    ${COMMAND}    target=${target}
     Verify Run    ${ret}    0
-
 
 Test Execute Background Commands
     [Arguments]  ${target}
@@ -113,7 +105,6 @@ Test Execute Background Commands
     ${ret_from_wait}=    Remoterunner.Wait Background Execution
     ...    ${target}   t=1
     Should Be Equal    ${ret_from_wait}    ${ret}
-
 
 Test File Copying
     [Arguments]  ${target1}  ${target2}
@@ -142,7 +133,6 @@ Test Break Sessions Before Execute Command In Target
         Verify Run    ${ret}    0
      END
 
-
 Test Hang Sessions Before Execute Command In Target
     [Arguments]  ${target}
     RemoteRunner.Set Target Property    ${target}    prompt_timeout    1
@@ -152,7 +142,6 @@ Test Hang Sessions Before Execute Command In Target
         ...    target=${target}
         Verify Run    ${ret}    0
      END
-
 
 Test Get Proxy From Call
     [Arguments]  ${target}
@@ -164,7 +153,6 @@ Test Get Proxy From Call
     ${ret}=    Call Method    ${testproxy}   test   0
     Should Be Equal   ${ret.testid}    1
     Should Be Equal   ${ret.status}    0
-
 
 Test Get Proxy Object
     [Arguments]  ${target}  ${username}
@@ -320,24 +308,20 @@ Template Test Execute Command In Target
     target1
     target2
 
-
 Template Test Execute Background Commands
     [Template]  Test Execute Background Commands
     target1
     target2
-
 
 Template Test File Copying
     [Template]  Test File Copying
     target1  target2
     target2  target1
 
-
 Template Test Break Sessions Before Execute Command In Target
     [Template]  Test Break Sessions Before Execute Command In Target
     target1
     target2
-
 
 Template Test Hang Sessions Before Execute Command In Target
     [Template]  Test Hang Sessions Before Execute Command In Target
@@ -349,19 +333,16 @@ Template Test Get Proxy From Call
     target1
     target2
 
-
 Template Test Get Proxy Object
     [Template]  Test Get Proxy Object
     target1  ${HOST1.user}
     target2  ${HOST2.user}
    [Teardown]  RemoteRunner.Close
 
-
 Template Test Execute Nohup Background In Target
     [Template]  Test Execute Nohup Background In Target
     target1
     target2
-
 
 Templated Test Set Target Property
     [Template]  Test Set Target Property

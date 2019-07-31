@@ -11,7 +11,6 @@ executed as root.
     Hosts HOST1 and HOST2 shall not share the same home directory.
 """
 
-
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
 DICT__HOST1 = {'host': 'localhost', 'user': 'python2user', 'password': 'python2testing'}

@@ -4,7 +4,6 @@ import types
 import logging
 from crl.interactivesessions.RunnerHandler import exec_in_module
 
-
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
 logger = logging.getLogger(__name__)

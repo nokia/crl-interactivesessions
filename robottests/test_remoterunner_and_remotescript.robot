@@ -154,7 +154,6 @@ Compare Execute Background Command In Target
     # comparison with results which RemoteScript should ideally return
     # See https://github.com/nokia/crl-remotescript/issues/11
 
-
 Compare File Copying
     Create Random File
     [Arguments]  ${target1}  ${target2}
@@ -198,8 +197,8 @@ Compare File Copying
     Compare Results    ${runner2}    ${script2}
     Compare Results    ${runner3}    ${script3}
     [Teardown]  Remove Files Locally And In Target
-*** Test Cases ***
 
+*** Test Cases ***
 Template Compare File Copying
     [Template]  Compare File Copying
     target1  target2
@@ -209,7 +208,6 @@ Template Compare Execute Command In Target
     [Template]  Compare Execute Command In Target
     target1
     target2
-
 
 Template Compare Copy Directory To Target
     [Template]  Compare Copy Directory To Target

@@ -8,7 +8,8 @@ from .remotemodules import servers
 from .modules import MainModule
 from .terminalclient import (
     TerminalClient,
-    TerminalClientError)
+    TerminalClientError,
+    TerminalClientFatalError)
 from .remotemodules.exceptions import FatalPythonError
 from .remotemodules.msgs import (
     ExecCommandRequest,
@@ -124,6 +125,9 @@ class MsgPythonShell(RawPythonShell):
         except FatalPythonError as e:
             LOGGER.debug(e)
             self._fatalerror = e
+        except TerminalClientFatalError as e:
+            self._fatalerror = FatalPythonError(e)
+            raise
         except (TimeoutError, TerminalClientError):
             raise
         except Exception as e:  # pylint: disable=broad-except

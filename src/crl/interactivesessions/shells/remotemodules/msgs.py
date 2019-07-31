@@ -91,7 +91,6 @@ class MsgBase(object):
         return True
 
     def serialize(self):
-        LOGGER.debug('==== MsgBase serialize starting')
         return b''.join(self._serialize_strings())
 
     def _serialize_strings(self):

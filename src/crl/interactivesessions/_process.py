@@ -9,7 +9,6 @@ from .runnerexceptions import RemoteTimeout
 from .shells.remotemodules.compatibility import (
     to_string, to_bytes, py23_unic, unic_to_string)
 
-
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
 LOGGER = logging.getLogger(__name__)
