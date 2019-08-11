@@ -77,13 +77,13 @@ class BashShell(AutoCompletableShell):
         logger.log(_LOGLEVEL, "Preparing bash session")
         output = self._read_until_end()
 
-        self._send_input_line('unset HISTFILE')
+        self._send_input_line('unset HISTFILE', remove_from_buffer=False)
         stty_cmd = "stty cols 400 rows 400 {0}".format(
             'echo' if self.tty_echo else '-echo')
-        self._send_input_line(stty_cmd)
-        self.set_prompt()
+        self._send_input_line(stty_cmd, remove_from_buffer=False)
+        self.set_prompt(remove_from_buffer=False)
         try:
-            self._read_until_end(timeout=1)
+            output += self._read_until_end(timeout=1)
         except TimeoutError:
             pass
 
@@ -93,10 +93,10 @@ class BashShell(AutoCompletableShell):
 
         return output
 
-    def set_prompt(self):
+    def set_prompt(self, remove_from_buffer):
         if self.set_rand_promt:
-            self._send_input_line("unset PROMPT_COMMAND")
-            self._send_input_line("export PS1={0}".format(self._prompt))
+            self._send_input_line("unset PROMPT_COMMAND", remove_from_buffer)
+            self._send_input_line("export PS1={0}".format(self._prompt), remove_from_buffer)
 
     def _detect_bash_prompt(self):
         """Detect current bash prompt and make sure terminal

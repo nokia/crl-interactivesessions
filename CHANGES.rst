@@ -3,6 +3,11 @@
 CHANGES
 =======
 
+1.2.2
+-----
+
+- Refactor output reading in _set_bash_environment
+
 1.2.1
 -----
 
