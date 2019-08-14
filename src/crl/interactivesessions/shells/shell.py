@@ -282,11 +282,11 @@ class Shell(object):
         if self._tty_echo:
             self._read(len(_input))
 
-    def _send_input_line(self, _input):
+    def _send_input_line(self, _input, remove_from_buffer=True):
         """Send a line of input to the terminal."""
         self._terminal.sendline(_input)
 
-        if self._tty_echo:
+        if self._tty_echo and remove_from_buffer:
             self._read(len(_input) + 2)  # line + '\r\n'
 
     def _send_interrupt(self):

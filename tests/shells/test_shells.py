@@ -104,6 +104,17 @@ def mock_read_until_end_status_nok(request):
 
 
 @pytest.fixture(scope='function')
+def mock_read_until_end_multiple_return_values(request):
+    buffer = 'USAGE OF THE ROOT ACCOUNT AND THE FULL BASH IS RECOMMENDED ONLY ' \
+             'FOR LIMITED USE. PLEASE USE A NON-ROOT ACCOUNT AND THE SCLI SHELL ' \
+             '(fsclish) AND/OR LIMITED BASH SHELL.'
+    return create_patch(mock.patch.object(BashShell,
+                                          '_read_until_end',
+                                          side_effect=['\r\n', buffer]),
+                        request)
+
+
+@pytest.fixture(scope='function')
 def mock_read_until_prompt_found(request):
     buffer = 'Warning: Permanently added ipaddr (RSA) to the list ' \
              'known hosts.USAGE OF THE ROOT ACCOUNT AND THE FULL BASH IS ' \
@@ -131,6 +142,16 @@ def mock_send_input_line(request):
     def send_input_line_works(*_, **kwargs):  # pylint: disable=unused-argument
         pass
     return create_patch(mock.patch.object(KeyAuthenticatedSshShell,
+                                          '_send_input_line',
+                                          side_effect=send_input_line_works,),
+                        request)
+
+
+@pytest.fixture(scope='function')
+def mock_send_input_line_bash(request):
+    def send_input_line_works(*_, **kwargs):  # pylint: disable=unused-argument
+        pass
+    return create_patch(mock.patch.object(BashShell,
                                           '_send_input_line',
                                           side_effect=send_input_line_works,),
                         request)
@@ -304,3 +325,12 @@ def test_sshshell_no_spawn_in_linux(monkeypatch):
     ssh = SshShell('host', 'user', 'password')
     with pytest.raises(AttributeError):
         ssh.spawn(1)
+
+
+@pytest.mark.usefixtures('mock_send_input_line_bash',
+                         'mock_detect_bash_prompt')
+def test_set_bash_environment_output(mock_read_until_end_multiple_return_values):
+    b = BashShell()
+    output = b._set_bash_environment()
+    assert 'USAGE OF THE ROOT ACCOUNT' in output
+    assert mock_read_until_end_multiple_return_values.call_count == 2
