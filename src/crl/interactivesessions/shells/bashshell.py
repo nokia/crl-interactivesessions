@@ -96,7 +96,8 @@ class BashShell(AutoCompletableShell):
     def set_prompt(self, remove_from_buffer=True):
         if self.set_rand_promt:
             self._send_input_line("unset PROMPT_COMMAND", remove_from_buffer)
-            self._send_input_line("export PS1={0}".format(self._prompt), remove_from_buffer)
+            self._send_input_line("export PS1={0}".format(self._prompt),
+                                  remove_from_buffer)
 
     def _detect_bash_prompt(self):
         """Detect current bash prompt and make sure terminal

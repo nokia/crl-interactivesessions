@@ -3,8 +3,8 @@
 CHANGES
 =======
 
-1.2.2
------
+1.2.2b0
+-------
 
 - Refactor output reading in _set_bash_environment
 
