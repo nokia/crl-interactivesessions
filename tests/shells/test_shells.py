@@ -330,6 +330,7 @@ def test_sshshell_no_spawn_in_linux(monkeypatch):
 @pytest.mark.usefixtures('mock_send_input_line_bash',
                          'mock_detect_bash_prompt')
 def test_set_bash_environment_output(mock_read_until_end_multiple_return_values):
+    #  pylint: disable=protected-access
     b = BashShell()
     output = b._set_bash_environment()
     assert 'USAGE OF THE ROOT ACCOUNT' in output

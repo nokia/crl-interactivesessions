@@ -23,7 +23,7 @@ class DerivedPythonShell(PythonShell):
     def _read_until(self, trigger, timeout=-1, suppress_timeout=False):
         pass
 
-    def _send_input_line(self, cmd):
+    def _send_input_line(self, cmd, remove_from_buffer=True):
         self.input_lines.append(cmd)
 
     @staticmethod

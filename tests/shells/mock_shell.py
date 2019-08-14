@@ -33,7 +33,7 @@ class MockShell(Shell):
         self.mock_terminal = mock.Mock()
         self.mock_echo = False
 
-    def _send_input_line(self, cmd):
+    def _send_input_line(self, cmd, remove_from_buffer=True):
         self.mock_send_input_line(cmd)
 
     def _read_until_prompt(self, timeout=-1, suppress_timeout=False):
