@@ -106,8 +106,8 @@ def mock_read_until_end_status_nok(request):
 @pytest.fixture(scope='function')
 def mock_read_until_end_multiple_return_values(request):
     buffer = 'USAGE OF THE ROOT ACCOUNT AND THE FULL BASH IS RECOMMENDED ONLY ' \
-             'FOR LIMITED USE. PLEASE USE A NON-ROOT ACCOUNT AND THE SCLI SHELL ' \
-             '(fsclish) AND/OR LIMITED BASH SHELL.'
+             'FOR LIMITED USE. ' \
+             'PLEASE USE A NON-ROOT ACCOUNT OR LIMITED BASH SHELL.'
     return create_patch(mock.patch.object(BashShell,
                                           '_read_until_end',
                                           side_effect=['\r\n', buffer]),
