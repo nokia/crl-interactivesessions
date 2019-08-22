@@ -3,6 +3,11 @@
 CHANGES
 =======
 
+1.2.2
+-----
+
+- Fix remote PythonServer failure in case stdout is not writable
+
 1.2.1
 -----
 
