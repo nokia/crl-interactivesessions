@@ -15,9 +15,15 @@ CHILD_MODULES = [chunkcomm, compatibility]
 LOGGER = logging.getLogger(__name__)
 
 
+class ServerCommError(Exception):
+    pass
+
+
 class ServerComm(chunkcomm.ChunkWriterBase, chunkcomm.ChunkReaderBase):
 
     _sleep_in_broken_systems = 0.00005
+    _write_tries = 3
+    _wait_for_writable = 10
 
     def __init__(self, infd, outfile):
         chunkcomm.ChunkReaderBase.__init__(self)
@@ -53,7 +59,14 @@ class ServerComm(chunkcomm.ChunkWriterBase, chunkcomm.ChunkReaderBase):
         return os.read(self.infd, n)
 
     def _write(self, s):
-        self._write_meth(s)
+        for _ in range(self._write_tries):
+            _, w, _ = select.select([], [self.outfile], [], self._wait_for_writable)
+            if w:
+                try:
+                    return self._write_meth(s)
+                except (OSError, IOError):
+                    pass
+        raise ServerCommError("stdout not writable")
 
     def _flush(self):
         self.outfile.flush()
