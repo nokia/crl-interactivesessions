@@ -3,18 +3,21 @@ import time
 import uuid
 import os
 from pickle import Unpickler
-from io import StringIO
+from io import BytesIO
 import base64
 import itertools
 import traceback
 from contextlib import contextmanager
+import six
 import pexpect
 from . import ShellSubprocess
 from .InteractiveSession import PythonShell
 from .shells.pythonshell import PythonRunNotStarted
 from .shells.pythonshellbase import UnexpectedOutputInPython
 from .shells.shell import TimeoutError
-
+from .shells.remotemodules.compatibility import (
+    to_bytes,
+    to_string)
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
@@ -171,18 +174,20 @@ class LocalShellSubprocess(ShellSubprocess.ShellSubprocess):
 
     def _get_result_wrapper_from_output(self, output):
         with self.unify_deserialize_errors(output):
-            decoded_output = base64.b64decode(output)
-            outputstream = StringIO(decoded_output)
+            decoded_output = base64.b64decode(to_bytes(output))
+            outputstream = BytesIO(decoded_output)
             return ShellSubprocessPickler(outputstream).load()
 
     def _get_run_creation_command(self, timeout):
         join_timeout = timeout if timeout > 0 else None
-        return "{0}({1}, '{2}', timeout={3}, executable='{4}')".format(
-            ShellSubprocess.RunShellSubprocess.__name__,
-            self._run_id,
-            self._serialize(self._cmd),
-            join_timeout,
-            self._executable)
+        return ("{name}({run_id}, {b}{serialized_cmd!r}, "
+                "timeout={timeout}, executable='{executable}')".format(
+                    name=ShellSubprocess.RunShellSubprocess.__name__,
+                    run_id=self._run_id,
+                    b='' if six.PY3 else 'b',
+                    serialized_cmd=self._serialize(self._cmd),
+                    timeout=join_timeout,
+                    executable=self._executable))
 
     def _get_backup_creation_command(self):
         return "{0}({1})".format(ShellSubprocess.ReadonlyShellSubprocess.__name__,
@@ -338,7 +343,9 @@ class SelfRepairingSession(object):
 
     @staticmethod
     def _strip_from_right(result):
-        return (result[0], result[1].rstrip('\r\n'), result[2].rstrip('\r\n'))
+        return (result[0],
+                to_string(result[1]).rstrip('\r\n'),
+                to_string(result[2]).rstrip('\r\n'))
 
     def _create_new_session(self):
         try:
