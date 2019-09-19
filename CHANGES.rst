@@ -3,6 +3,11 @@
 CHANGES
 =======
 
+1.2.3
+-----
+
+- Set sys.stdout.fileno() blocking in remote.
+
 1.2.2
 -----
 
