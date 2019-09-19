@@ -1,4 +1,3 @@
-import logging
 import time
 import sys
 import os
@@ -12,18 +11,11 @@ if 'chunkcomm' not in globals():
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
 CHILD_MODULES = [chunkcomm, compatibility]
-LOGGER = logging.getLogger(__name__)
-
-
-class ServerCommError(Exception):
-    pass
 
 
 class ServerComm(chunkcomm.ChunkWriterBase, chunkcomm.ChunkReaderBase):
 
     _sleep_in_broken_systems = 0.00005
-    _write_tries = 3
-    _wait_for_writable = 10
 
     def __init__(self, infd, outfile):
         chunkcomm.ChunkReaderBase.__init__(self)
@@ -35,10 +27,20 @@ class ServerComm(chunkcomm.ChunkWriterBase, chunkcomm.ChunkReaderBase):
         self._write_meth = (self.outfile.buffer.write
                             if compatibility.PY3 else
                             self.outfile.write)
+        self._set_blocking_states()
+
+    def _set_blocking_states(self):
+        self._set_nonblocking_infd()
+        self._set_blocking_outfd()
 
     def _set_nonblocking_infd(self):
         fl = fcntl.fcntl(self.infd, fcntl.F_GETFL)
         fcntl.fcntl(self.infd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+
+    def _set_blocking_outfd(self):
+        outfd = self.outfile.fileno()
+        fl = fcntl.fcntl(outfd, fcntl.F_GETFL)
+        fcntl.fcntl(outfd, fcntl.F_SETFL, fl & ~os.O_NONBLOCK)
 
     def set_msgcaches(self, msgcaches):
         self._msgcaches = msgcaches
@@ -59,14 +61,7 @@ class ServerComm(chunkcomm.ChunkWriterBase, chunkcomm.ChunkReaderBase):
         return os.read(self.infd, n)
 
     def _write(self, s):
-        for _ in range(self._write_tries):
-            _, w, _ = select.select([], [self.outfile], [], self._wait_for_writable)
-            if w:
-                try:
-                    return self._write_meth(s)
-                except (OSError, IOError):
-                    pass
-        raise ServerCommError("stdout not writable")
+        self._write_meth(s)
 
     def _flush(self):
         self.outfile.flush()
