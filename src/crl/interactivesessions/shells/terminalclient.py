@@ -110,7 +110,7 @@ class TerminalClient(MsgManagerBase):
         timer = Timer(timeout)
         for remaining_timeout in timer.remaining_timeouts():
             try:
-                r = self.receive(remaining_timeout)
+                r = self._receive(remaining_timeout)
             except TerminalClientError:
                 continue
             self._send_ack_if_needed(r)
@@ -134,7 +134,12 @@ class TerminalClient(MsgManagerBase):
     def send(self, msg):
         self._strcomm.write_str(self.serialize(msg))
 
-    def receive(self, timeout):
+    def receive_and_send_ack(self, timeout):
+        msg = self._receive(timeout)
+        self._send_ack_if_needed(msg)
+        return msg
+
+    def _receive(self, timeout):
         self._terminalcomm.set_timeout(timeout)
         with self._client_exception_wrap():
             return self.deserialize(self._strcomm.read_str())

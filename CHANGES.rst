@@ -3,10 +3,15 @@
 CHANGES
 =======
 
+1.2.4
+-----
+
+- Acknowledge server ID reply in start of MsgPythonShell
+
 1.2.3
 -----
 
-- Set sys.stdout.fileno() blocking in remote.
+- Set sys.stdout.fileno() blocking in remote
 
 1.2.2
 -----

@@ -79,7 +79,7 @@ class MsgPythonShell(RawPythonShell):
         self._fatalerror = None
 
     def _get_server_id_in_start(self, timeout):
-        r = self._client.receive(timeout)
+        r = self._client.receive_and_send_ack(timeout)
         return r.server_id
 
     def exec_command(self, cmd, timeout=-1):
