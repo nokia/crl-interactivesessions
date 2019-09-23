@@ -176,16 +176,41 @@ class CustomTerminalClient(TerminalClient):
 
 @pytest.fixture
 def customterminalclient():
-    c = CustomTerminalClient()
+    with mock_terminalclient(CustomTerminalClient) as m:
+        yield m
+
+
+@pytest.fixture
+def duplicateclient():
+    with mock_terminalclient(DuplicateClient) as m:
+        yield m
+
+
+@contextmanager
+def mock_terminalclient(termcls):
+    t = termcls()
     with mock.patch('crl.interactivesessions.shells.msgpythonshell.TerminalClient',
                     spec_set=True) as p:
-        p.return_value = c
-        yield c
+        p.return_value = t
+        yield t
+
+
+class DuplicateClient(TerminalClient):
+    def send_and_receive(self, msg, timeout):
+        reply = super(DuplicateClient, self).send_and_receive(msg, timeout)
+        self.send(msg)
+        return reply
 
 
 @pytest.fixture
 def custommsgpythonshell(customterminalclient, simple_retry_shellcontext):
     with simple_retry_shellcontext(Retry(tries=50, interval=0.1, timeout=0.5)) as s:
+        yield s
+
+
+@pytest.fixture
+def duplicateshell(duplicateclient, normal_pythonterminal):
+    with msgpythonshell_context(normal_pythonterminal) as s:
         yield s
 
 

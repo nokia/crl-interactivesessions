@@ -27,16 +27,8 @@ Force Tags     remoterunner
 ...                     update_env_dict=&{EMPTY}
 
 
-&{HOST1}=    host=example1.com
-...          user=username1
-...          password=password1
-
-&{HOST2}=    host=example2.com
-...          user=username2
-...          password=password2
-
 @{SHELLDICTS1}=    ${HOST1}
-@{SHELLDICTS2}=    ${HOST1}    ${HOST2}
+@{SHELLDICTS2}=    ${GW}    ${HOST2_VIA_GW}
 
 ${REPEAT}    20
 

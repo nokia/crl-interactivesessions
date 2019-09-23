@@ -3,6 +3,12 @@
 CHANGES
 =======
 
+1.2.6
+-----
+
+- Raise FatalPythonError in MsgPythonShell.exec_command in case the remote
+  server has failed
+
 1.2.5
 -----
 
