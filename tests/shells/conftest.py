@@ -185,7 +185,7 @@ def customterminalclient():
 
 @pytest.fixture
 def custommsgpythonshell(customterminalclient, simple_retry_shellcontext):
-    with simple_retry_shellcontext(Retry(tries=50, interval=0.01, timeout=0.5)) as s:
+    with simple_retry_shellcontext(Retry(tries=50, interval=0.1, timeout=0.5)) as s:
         yield s
 
 

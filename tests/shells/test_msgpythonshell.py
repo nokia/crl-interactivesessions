@@ -120,7 +120,7 @@ def test_exec_command_timeout(mock_strcomm, shortretry_msgpythonshell):
 
 def test_server_id_received_only_once(custommsgpythonshell, customterminalclient):
     shell = custommsgpythonshell
-    time.sleep(0.05)
+    time.sleep(0.5)
     shell.exec_command("'exec-content'")
     serveridreplies = [m for m in customterminalclient.received_msgs
                        if isinstance(m, ServerIdReply)]
