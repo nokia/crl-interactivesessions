@@ -177,7 +177,7 @@ class AutoRecoveringTerminal(object):
     def auto_close(self):
         try:
             yield None
-        except self._broken_exceptions:
+        except self._broken_exceptions:  # pylint: disable=catching-non-exception
             self.close()
             raise
 
@@ -193,7 +193,7 @@ class AutoRecoveringTerminal(object):
     def _recover_if_needed(self):
         try:
             self._verify_only_once()
-        except self._broken_exceptions:
+        except self._broken_exceptions:  # pylint: disable=catching-non-exception
             self.close()
             self.initialize_terminal()
 

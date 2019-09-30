@@ -3,6 +3,11 @@
 CHANGES
 =======
 
+1.2.5
+-----
+
+- Fix python 2 & 3 compatibility for SelfRepairingSession
+
 1.2.4
 -----
 

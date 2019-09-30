@@ -27,9 +27,10 @@ Remote Test Setup
     Remove Tmp Directories
 
 Remove Tmp Directories
-    :FOR    ${target}     IN    target1    target2
-    \    RemoteRunner.Execute Command In Target    rm -rf /tmp/runner /tmp/script
-    \    ...    target=${target}
+    FOR    ${target}     IN    target1    target2
+        RemoteRunner.Execute Command In Target    rm -rf /tmp/runner /tmp/script
+        ...    target=${target}
+    END
 
 Remove Files In Target
     [Arguments]  ${target}  ${file}  ${dir}

@@ -1,4 +1,5 @@
 import os
+import sys
 import pickle
 import base64
 import logging
@@ -12,6 +13,8 @@ __copyright__ = 'Copyright (C) 2019, Nokia'
 
 logger = logging.getLogger(__name__)
 _LOGLEVEL = 7
+
+PY3 = (sys.version_info.major == 3)
 
 
 class PythonRunNotStarted(InteractiveSessionError):
@@ -71,8 +74,9 @@ class PythonShell(PythonShellBase):
         self.block_exec(
             "with open('{0}', 'w') as _f:".format(destination_path))
         self.block_exec(
-            "  _f.writelines(pickle.loads(base64.b64decode('{0}')))".format(
-                base64.b64encode(pickle.dumps(lines, protocol=0))))
+            "  _f.writelines(pickle.loads(base64.b64decode({b}{encoded!r})))".format(
+                b='' if PY3 else 'b',
+                encoded=base64.b64encode(pickle.dumps(lines, protocol=0))))
         self.block_end_no_output()
 
     @staticmethod
