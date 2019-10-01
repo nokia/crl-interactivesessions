@@ -17,7 +17,7 @@ from ._process import RunResult, rstrip_runresult
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 class TargetIsNotSet(Exception):
@@ -388,7 +388,7 @@ class RemoteRunner(object):
         """
 
         with self._targethandle(target) as handle:
-            logger.debug(
+            LOGGER.debug(
                 "execute_command_in_target(command='%s', target='%s')",
                 command, target)
             return rstrip_runresult(
@@ -713,7 +713,7 @@ class RemoteRunner(object):
 
         """
         with self._terminalhandle(target) as to_terminal:
-            logger.debug('Destination_dir: %s', destination_dir)
+            LOGGER.debug('Destination_dir: %s', destination_dir)
             self.filecopier.copy_file(
                 sourcefile=_LocalFile(source_file),
                 targetfile=_RemoteScriptRemoteFile(

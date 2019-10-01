@@ -13,7 +13,7 @@ from pexpect import EOF, TIMEOUT
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 try:
     from queue import Queue, Empty  # Python 3
@@ -188,6 +188,6 @@ class ParamikoSpawn(SpawnBase):
         self.chan.close()
 
     def close(self, force=False):  # pylint: disable=unused-argument
-        logger.debug('closing ParamikoSpawn %s', self)
+        LOGGER.debug('closing ParamikoSpawn %s', self)
         self.sendeof()
         self._read_thread.join(10)

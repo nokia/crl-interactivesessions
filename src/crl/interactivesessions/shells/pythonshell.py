@@ -11,7 +11,7 @@ from .pythonshellbase import PythonShellBase
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 _LOGLEVEL = 7
 
 PY3 = (sys.version_info.major == 3)
@@ -42,7 +42,7 @@ class PythonShell(PythonShellBase):
         super(PythonShell, self).set_tty_echo(tty_echo)
 
     def set_tty_echo(self, _):
-        logger.debug("Python shell does not support echo setting changing,"
+        LOGGER.debug("Python shell does not support echo setting changing,"
                      " keeping old value!")
 
     def start(self):
@@ -65,7 +65,7 @@ class PythonShell(PythonShellBase):
         """Transfer the text file source_path to current host of the shell"""
         filename = os.path.basename(source_path)
         destination_path = os.path.join(destination_dir, filename)
-        logger.debug("Transferring text file from '%s' to remote node:'%s'",
+        LOGGER.debug("Transferring text file from '%s' to remote node:'%s'",
                      source_path, destination_path)
         self._write_lines_to_file(self._read_lines_from_file(source_path),
                                   destination_path)
@@ -88,36 +88,36 @@ class PythonShell(PythonShellBase):
         return self._single_command_no_output(cmd, timeout=timeout)
 
     def single_command(self, cmd, timeout=10):
-        logger.log(_LOGLEVEL,
+        LOGGER.log(_LOGLEVEL,
                    "(PythonShell) single_command_exec send line: %s", cmd)
         self._send_input_line(cmd)
         output = self._read_until(self._prompt[0], timeout=timeout)
-        logger.log(_LOGLEVEL,
+        LOGGER.log(_LOGLEVEL,
                    "(PythonShell) single_command_exec return: %s", output)
         return output
 
     def exec_single_with_trigger(self, cmd, trigger, timeout=10):
-        logger.log(_LOGLEVEL, "(PythonShell) sending '%s', trigger: '%s'",
+        LOGGER.log(_LOGLEVEL, "(PythonShell) sending '%s', trigger: '%s'",
                    cmd, trigger)
         try:
             self._send_input_line(cmd)
             self._read_until(trigger, timeout=1)
         except Exception as e:
             raise PythonRunNotStarted(e)
-        logger.log(_LOGLEVEL, "(PythonShell) trigger received. "
+        LOGGER.log(_LOGLEVEL, "(PythonShell) trigger received. "
                    "Waiting prompt for %d seconds", timeout)
         output = self._read_until(self._prompt[0], timeout=timeout)
-        logger.log(_LOGLEVEL, "(PythonShell) output: '%s'", output)
+        LOGGER.log(_LOGLEVEL, "(PythonShell) output: '%s'", output)
         return output
 
     def block_exec(self, cmd, timeout=10):
-        logger.log(_LOGLEVEL, "(PythonShell) bloc_exec send line: %s", cmd)
+        LOGGER.log(_LOGLEVEL, "(PythonShell) bloc_exec send line: %s", cmd)
         self._send_input_line(cmd)
         return self._verify_and_return_output(
             self._read_until(self._prompt[1], timeout=timeout))
 
     def block_end_no_output(self, timeout=10):
-        logger.log(_LOGLEVEL, "(PythonShell) block end")
+        LOGGER.log(_LOGLEVEL, "(PythonShell) block end")
         return self.single_command_no_output("", timeout=timeout)
 
     def stop_run(self, timeout=3):

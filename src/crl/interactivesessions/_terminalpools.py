@@ -15,7 +15,7 @@ from .interactivesessionexceptions import InteractiveSessionError
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 class TerminalPoolsBusy(InteractiveSessionError):

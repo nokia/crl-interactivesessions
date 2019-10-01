@@ -13,6 +13,8 @@ from contextlib import contextmanager
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
+LOGGER = logging.getLogger(__name__)
+
 PY3 = (sys.version_info.major == 3)
 
 
@@ -87,7 +89,7 @@ class FailedExecutionResult(ExecutionResult):
 
     def _get_result(self):
         if self._get_trace():
-            logging.log(7, self._get_trace())
+            LOGGER.debug(self._get_trace())
         raise self._exception
 
     def __str__(self):

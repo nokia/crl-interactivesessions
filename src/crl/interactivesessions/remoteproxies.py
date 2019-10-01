@@ -6,7 +6,7 @@ from crl.interactivesessions.runnerexceptions import (
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 def autoinitialize(f):

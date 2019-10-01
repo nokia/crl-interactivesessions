@@ -6,6 +6,8 @@ from .InteractiveSession import SshShell, PythonShell, NamespaceShell
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
+LOGGER = logging.getLogger(__name__)
+
 
 class FailedToSetWorkingDirectory(Exception):
     pass
@@ -163,14 +165,14 @@ class InteractiveSessionExecutor(object):
             if self.dhcpagenthost not in self.invalidhosts:
                 self._connect_to_dhcpagenthost()
             else:
-                logging.debug("Did not try to connect DHCP Agent host %s, "
-                              " because earlier connection attempt failed. "
-                              " Trying via controller to the namespace...",
-                              self.dhcpagenthost)
+                LOGGER.debug("Did not try to connect DHCP Agent host %s, "
+                             " because earlier connection attempt failed. "
+                             " Trying via controller to the namespace...",
+                             self.dhcpagenthost)
         except Exception:  # pylint: disable=broad-except
-            logging.debug("Could not connect to DHCP Agent host %s,"
-                          " Trying via controller to the namespace...",
-                          self.dhcpagenthost)
+            LOGGER.debug("Could not connect to DHCP Agent host %s,"
+                         " Trying via controller to the namespace...",
+                         self.dhcpagenthost)
             self._add_to_invalid_hosts(self.dhcpagenthost)
 
     @classmethod
