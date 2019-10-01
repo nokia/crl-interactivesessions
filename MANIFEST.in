@@ -7,7 +7,4 @@ include .coveragerc
 include .pylintrc
 include README.rst
 include .flake8
-include docker-robottests-targets/docker-robottests
-include docker-robottests-targets/docker-compose.yaml
-include docker-robottests-targets/py27/Dockerfile
-include docker-robottests-targets/py37/Dockerfile
+recursive-include docker-robottests-targets/ *robottests *.yaml Dockerfile
