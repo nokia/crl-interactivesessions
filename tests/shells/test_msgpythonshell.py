@@ -3,7 +3,9 @@ import time
 from io import StringIO
 import pytest
 import pexpect
-from crl.interactivesessions.shells.msgpythonshell import MsgPythonShell
+from crl.interactivesessions.shells.msgpythonshell import (
+    MsgPythonShell,
+    FatalPythonError)
 from crl.interactivesessions.shells.terminalclient import (
     TerminalClientError,
     TerminalClientFatalError)
@@ -119,12 +121,20 @@ def test_exec_command_timeout(mock_strcomm, shortretry_msgpythonshell):
 
 
 def test_server_id_received_only_once(custommsgpythonshell, customterminalclient):
-    shell = custommsgpythonshell
     time.sleep(0.5)
-    shell.exec_command("'exec-content'")
+    custommsgpythonshell.exec_command("'exec-content'")
     serveridreplies = [m for m in customterminalclient.received_msgs
                        if isinstance(m, ServerIdReply)]
     assert len(serveridreplies) == 1
+
+
+def test_duplicate_messages(duplicateshell):
+    cmd = "'cmd'"
+    duplicateshell.exec_command(cmd)
+    with pytest.raises(FatalPythonError) as excinfo:
+        duplicateshell.exec_command(cmd)
+
+    assert 'MsgCachesAlreadyRemoved' in str(excinfo.value)
 
 
 def test_msgpythonshell_noattrs():

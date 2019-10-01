@@ -62,11 +62,14 @@ Set RemoteScript Targets
     ...                        username=${HOST1['user']}
     ...                        password=${HOST1['password']}
     ...                        name=target1
-
+    Run Keyword If   'port' in ${HOST1}
+    ...    RemoteScript.Set Target Property    target1    port    ${HOST1['port']}
     RemoteScript.Set Target    host=${HOST2['host']}
     ...                        username=${HOST2['user']}
     ...                        password=${HOST2['password']}
     ...                        name=target2
+    Run Keyword If   'port' in ${HOST2}
+    ...    RemoteScript.Set Target Property    target2    port    ${HOST2['port']}
 
 
 Compare Results
