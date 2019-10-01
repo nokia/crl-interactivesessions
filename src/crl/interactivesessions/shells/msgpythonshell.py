@@ -125,6 +125,7 @@ class MsgPythonShell(RawPythonShell):
         except FatalPythonError as e:
             LOGGER.debug(e)
             self._fatalerror = e
+            raise
         except TerminalClientFatalError as e:
             self._fatalerror = FatalPythonError(e)
             raise

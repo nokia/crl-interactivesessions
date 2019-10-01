@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# Copyright (C) 2019, Nokia
+
+set -u
+set -e
+set -x
+VARIABLEFILE=$1
+docker rmi py2-image py3-image || true
+docker-compose build --force-rm
+docker-compose up -d
+EXIT_VALUE=0
+tox -o -p all -e "robottests{27,37}" -- -V ${VARIABLEFILE} || EXIT_VALUE=$?
+docker-compose down
+exit ${EXIT_VALUE}
