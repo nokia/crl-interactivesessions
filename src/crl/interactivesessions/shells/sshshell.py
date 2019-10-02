@@ -13,8 +13,7 @@ from .msgreader import MsgReader
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-logger = logging.getLogger(__name__)
-_LOGLEVEL = 7
+LOGGER = logging.getLogger(__name__)
 
 
 class SshError(InteractiveSessionError):
@@ -88,14 +87,14 @@ class SshShell(BashShell):
         prompt_re = re.compile(
             br"\[[a-zA-Z]+@[a-zA-Z]{2,4}-[0-9]*\(.+\)\s(\/.+)+\]")
 
-        logger.debug("Awaiting SSH connection to %s", self.ip)
+        LOGGER.debug("Awaiting SSH connection to %s", self.ip)
         for password in self.passwords:
             n = self._terminal.expect(["word:",
                                        "Connection reset by peer",
                                        prompt_re])
 
             if n == 0:
-                logger.debug("Sending password %s", password)
+                LOGGER.debug("Sending password %s", password)
                 self._terminal.sendline(password)
                 self._read(2)  # newline after password prompt
             elif n == 1:
@@ -123,7 +122,7 @@ class SshShell(BashShell):
         return self._common_start()
 
     def _paramikospawn(self, timeout):
-        logger.debug('Spawning SshShell using ParamikoSpawn')
+        LOGGER.debug('Spawning SshShell using ParamikoSpawn')
         self.ssh = paramiko.SSHClient()
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.ssh.connect(self.ip,
@@ -132,7 +131,7 @@ class SshShell(BashShell):
                          port=22 if self.port is None else self.port)
         self.chan = self.ssh.invoke_shell()
         self.start = self._start_in_paramiko
-        logger.debug('Connection channel: %s', self.chan)
+        LOGGER.debug('Connection channel: %s', self.chan)
         return ParamikoSpawn(self.chan, timeout=timeout)
 
     def _pop_passwords(self):

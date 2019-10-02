@@ -12,8 +12,7 @@ from .msgreader import MsgReader
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-logger = logging.getLogger(__name__)
-_LOGLEVEL = 7
+LOGGER = logging.getLogger(__name__)
 
 
 class SudoError(InteractiveSessionError):
@@ -41,13 +40,13 @@ class SudoShell(BashShell):
         prompt_re = re.compile(
             r"[[a-zA-Z]+@[a-zA-Z]{2,4}-[0-9]*(.+)\s(/.+)+]")
 
-        logger.debug("Attemping to sudo")
+        LOGGER.debug("Attemping to sudo")
         n = self._terminal.expect(["word:",
                                    "Sorry, try again.",
                                    prompt_re])
 
         if n == 0:
-            logger.debug("Sending password %s", self._password)
+            LOGGER.debug("Sending password %s", self._password)
             self._terminal.sendline(self._password)
             self._read(2)  # newline after password prompt
         elif n == 1:

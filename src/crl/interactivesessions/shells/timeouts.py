@@ -1,6 +1,8 @@
 from crl.interactivesessions.shells.shell import DEFAULT_STATUS_TIMEOUT
 from crl.interactivesessions.shells.msgreader import MsgReader
 from crl.interactivesessions.shells.pythonshellbase import PythonShellBase
+from crl.interactivesessions.remoteproxies import _RemoteProxy
+
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
@@ -37,3 +39,15 @@ class Timeouts(object):
         """Reset to default the timeout for short Python shell operations.
         """
         PythonShellBase.set_short_timeout(self._original_short_timeout)
+
+    @staticmethod
+    def set_proxy_default_timeout(timeout):
+        """Set *_RemoteProxy* and *_RecursiveProxy* default timeouts
+        """
+        _RemoteProxy.set_remote_proxy_default_timeout(float(timeout))
+
+    @staticmethod
+    def reset_proxy_default_timeout():
+        """Set *_RemoteProxy* and *_RecursiveProxy* default timeouts
+        """
+        _RemoteProxy.reset_remote_proxy_default_timeout()
