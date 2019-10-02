@@ -1,4 +1,6 @@
 import logging
+import os
+import sys
 from multiprocessing import Process
 from collections import namedtuple
 from contextlib import contextmanager
@@ -31,6 +33,38 @@ def pytest_configure(config):  # pylint: disable=unused-argument
     # TODO: remove workaround for too verbose flakes after
     # https://github.com/tholo/pytest-flake8/issues/42 corrected
     logging.getLogger('flake8').setLevel(logging.WARN)
+
+
+@pytest.fixture(autouse=True)
+def logging_verifier(intcaplog, request):
+    def verify_logging():
+        mods = get_interactivesessions_modules()
+        for r in all_interactivesessions_records(intcaplog):
+            try:
+                assert r.name == mods[r.pathname].__name__
+            except KeyError:
+                pass
+
+    request.addfinalizer(verify_logging)
+
+
+def get_interactivesessions_modules():
+    return {m.__file__: m for _, m in sys.modules.items() if is_interactivesessions(m)}
+
+
+def is_interactivesessions(m):
+    try:
+        return 'crl.interactivesessions' in m.__name__
+    except AttributeError:
+        return False
+
+
+def all_interactivesessions_records(caplog):
+    pattern = os.path.join('crl', 'interactivesessions')
+    for when in ('setup', 'call', 'teardown'):
+        for r in caplog.get_records(when):
+            if pattern in r.pathname:
+                yield r
 
 
 @pytest.fixture

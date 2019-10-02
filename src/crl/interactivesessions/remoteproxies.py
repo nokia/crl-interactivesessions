@@ -6,7 +6,7 @@ from crl.interactivesessions.runnerexceptions import (
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 def autoinitialize(f):
@@ -56,6 +56,7 @@ class _RemoteProxy(object):
 
     _SETATTR_TEMPLATE = "{handle}.{name} = RunnerHandler._deserialize({val!r})"
     _SETATTR_PROXY_TEMPLATE = "{handle}.{name} = {proxy}"
+    _remote_proxy_default_timeout = _remote_proxy_orig_default_timeout = 3600
 
     def __init__(self, session, remote_name, local_spec=None,
                  parent=None, is_remote_owned=True):
@@ -65,7 +66,8 @@ class _RemoteProxy(object):
         self.__dict__['_spec'] = None
         self.__dict__['__parent'] = parent
         self.__dict__['_is_remote_owned'] = is_remote_owned
-        self.__dict__['_remote_proxy_default_timeout'] = 3600
+        self.__dict__['_remote_proxy_default_timeout'] = (
+            _RemoteProxy._remote_proxy_default_timeout)
         self.__dict__['_remote_proxy_session_id'] = (
             self._get_remote_proxy_session_id_from_remote_name(session,
                                                                remote_name))
@@ -75,6 +77,14 @@ class _RemoteProxy(object):
 
         self._set_remote_proxy_timeout_from_parent()
         self.remote_proxy_use_synchronous_response()
+
+    @classmethod
+    def set_remote_proxy_default_timeout(cls, timeout):
+        cls._remote_proxy_default_timeout = timeout
+
+    @classmethod
+    def reset_remote_proxy_default_timeout(cls):
+        cls._remote_proxy_default_timeout = cls._remote_proxy_orig_default_timeout
 
     @staticmethod
     def _get_remote_proxy_session_id_from_remote_name(session,

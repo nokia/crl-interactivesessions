@@ -108,7 +108,7 @@ from .shells.sshshell import SshShell  # noqa: F401
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 _LOGLEVEL = 7  # less than DEBUG
 
 
@@ -162,7 +162,7 @@ class InteractiveSession(object):
         """
 
         cmd = shell.get_start_cmd()
-        logger.debug("Spawning shell '%s(%s)' with cmd '%s'",
+        LOGGER.debug("Spawning shell '%s(%s)' with cmd '%s'",
                      shell.__class__.__name__, shell, cmd)
         terminal = self._spawn(shell, cmd)
 
@@ -190,7 +190,7 @@ class InteractiveSession(object):
             return shell.spawn(self.terminal_spawn_timeout)
         except AttributeError as e:
             if "has no attribute 'spawn'" in str(e):
-                logger.debug('Spawning shell using pexpect.spawn')
+                LOGGER.debug('Spawning shell using pexpect.spawn')
                 return pexpect.spawn(cmd,
                                      env={"TERM": "dumb"},
                                      timeout=self.terminal_spawn_timeout,
@@ -218,7 +218,7 @@ class InteractiveSession(object):
         """
 
         cmd = shell.get_start_cmd()
-        logger.debug("Pushing shell '%s(%s)' with cmd '%s'",
+        LOGGER.debug("Pushing shell '%s(%s)' with cmd '%s'",
                      shell.__class__.__name__, shell, cmd)
         self.current_shell()._exec_cmd(cmd)
         shell.set_terminal(self.terminal)
@@ -232,8 +232,8 @@ class InteractiveSession(object):
             self.current_shell().set_prompt()
             raise
         except Exception as ex:
-            logger.info("Failed to push shell - %s", ex)
-            logger.debug("Traceback:\n%s",
+            LOGGER.info("Failed to push shell - %s", ex)
+            LOGGER.debug("Traceback:\n%s",
                          ''.join(traceback.format_tb(sys.exc_info()[2])))
             self.terminal.expect_exact(self.current_shell().get_prompt(),
                                        timeout=timeout)
@@ -264,7 +264,7 @@ class InteractiveSession(object):
         retval = None
         if self.shells:
             retval = self.current_shell()._read_until_prompt()
-            logger.log(_LOGLEVEL, "InteractiveSession _pop returns: %s",
+            LOGGER.log(_LOGLEVEL, "InteractiveSession _pop returns: %s",
                        retval)
 
         return retval
@@ -278,7 +278,7 @@ class InteractiveSession(object):
         (e.g. at the beginning of each test case reusing the same
         :class:`InteractiveSession`.)
         """
-        logger.log(_LOGLEVEL, "Popping shells until prompt matches '%s'",
+        LOGGER.log(_LOGLEVEL, "Popping shells until prompt matches '%s'",
                    shell.get_prompt())
 
         while shell in self.shells:
@@ -296,7 +296,7 @@ class InteractiveSession(object):
             self._prompt_should_match()
             self.current_shell().exit()
         except UnexpectedPrompt as e:
-            logger.info("Prompt '%s' does not match expected prompt '%s',"
+            LOGGER.info("Prompt '%s' does not match expected prompt '%s',"
                         " popping shell without calling exit()",
                         e.received_prompt, e.expected_prompt)
             raise e
@@ -340,8 +340,8 @@ class InteractiveSession(object):
             try:
                 self._pop()
             except UnexpectedPrompt as e:
-                logger.info("Failed to pop() shell: %s", e)
-                logger.debug("Traceback:\n%s",
+                LOGGER.info("Failed to pop() shell: %s", e)
+                LOGGER.debug("Traceback:\n%s",
                              traceback.format_tb(sys.exc_info()[2]))
         self.terminal.close(force=True)
 

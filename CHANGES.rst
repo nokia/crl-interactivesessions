@@ -3,6 +3,17 @@
 CHANGES
 =======
 
+
+1.2.7
+-----
+
+- Add stability tests documentation back
+
+- Improve logging by moving and requiring all logging to be under
+  'crl.interactivesessions' logger.
+
+- Make _RemoteProxy and _RecursiveProxy default timeouts configurable
+
 1.2.6
 -----
 

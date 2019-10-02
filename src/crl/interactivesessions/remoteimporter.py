@@ -6,7 +6,7 @@ from crl.interactivesessions.RunnerHandler import exec_in_module
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 class ModuleImporter(object):
@@ -60,7 +60,7 @@ class RemoteImporter(object):
     def importfile(self, filepath):
         modulename = os.path.splitext(os.path.basename(filepath))[0]
         content = self._get_filecontent(filepath)
-        logger.debug('content: %s', repr(content))
+        LOGGER.debug('content: %s', repr(content))
         for importer in self._moduleimporters:
             importer.importmodule(modulename, content)
 

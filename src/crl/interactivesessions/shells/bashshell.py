@@ -13,7 +13,7 @@ from .registershell import RegisterShell
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 _LOGLEVEL = 7
 
 
@@ -74,7 +74,7 @@ class BashShell(AutoCompletableShell):
         (:class::`.BashShell`._prompt) so as to allow for accurate prompt
         detection during command execution.
         """
-        logger.log(_LOGLEVEL, "Preparing bash session")
+        LOGGER.log(_LOGLEVEL, "Preparing bash session")
         output = self._read_until_end()
 
         self._send_input_line('unset HISTFILE')
@@ -102,11 +102,11 @@ class BashShell(AutoCompletableShell):
         """Detect current bash prompt and make sure terminal
         input & output are synchronized
         """
-        logging.log(7, "Trying to detect bash prompt...")
+        LOGGER.debug('Trying to detect bash prompt...')
         self._terminal.sendline('echo PROMPT=')
         self._terminal.sendline('echo -n 123456789;echo 987654321')
         res = self._read_until('123456789987654321', timeout=60)
-        logging.log(7, '_read_until returned: "%s"', res)
+        LOGGER.debug('_read_until returned: "%s"', res)
         res = res.replace('echo PROMPT=', '')
         res = res.replace('echo -n 123456789;echo 987654321', '')
 
@@ -116,7 +116,7 @@ class BashShell(AutoCompletableShell):
             raise BashError('Could not detect prompt')
         detected_prompt = m.group(1)
         self._read_until(detected_prompt, timeout=60)
-        logging.log(7, "Detected prompt '%s'", detected_prompt)
+        LOGGER.debug("Detected prompt '%s'", detected_prompt)
         return detected_prompt
 
     def _init_env_if_needed(self, output):
@@ -144,7 +144,7 @@ class BashShell(AutoCompletableShell):
         retval = ""
 
         if self._confirmation_msg:
-            logger.log(_LOGLEVEL, "Awaiting prompt '%s'",
+            LOGGER.log(_LOGLEVEL, "Awaiting prompt '%s'",
                        self._confirmation_msg)
             retval = self._read_until(self._confirmation_msg, -1)
             self._terminal.sendline(self._confirmation_rsp)
@@ -153,7 +153,7 @@ class BashShell(AutoCompletableShell):
         return retval
 
     def exit(self):
-        logger.log(_LOGLEVEL, "Exit from BashShell")
+        LOGGER.log(_LOGLEVEL, "Exit from BashShell")
         self._exec_cmd("exit")
 
     def get_status_code(self, timeout=DEFAULT_STATUS_TIMEOUT):
@@ -184,7 +184,7 @@ class BashShell(AutoCompletableShell):
         self._exec_cmd(cmd)
 
     def confirm_application_was_started(self, expect, timeout=60):
-        logger.log(_LOGLEVEL, "Run subscriber expect: %s, timeout: %s",
+        LOGGER.log(_LOGLEVEL, "Run subscriber expect: %s, timeout: %s",
                    expect, timeout)
         if self._terminal.expect_exact([expect, self.get_prompt()],
                                        timeout=timeout) > 0:
