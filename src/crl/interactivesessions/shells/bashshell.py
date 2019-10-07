@@ -41,9 +41,32 @@ class CdToWorkdirFailed(InteractiveSessionError):
     pass
 
 
+class BashShellTypeError(TypeError):
+    pass
+
+
 @RegisterShell()
 class BashShell(AutoCompletableShell):
-    """InteractiveSession Shell interface for bash."""
+    """InteractiveSession Shell interface for bash.
+
+    Args:
+        cmd (str): command to start bash shell, default: bash
+
+        confirmation_msg (str): string to expect for confirmation to start bash shell
+
+        confirmation_rsp (str): expected response to confirmation
+
+        tty_echo (bool): terminal echo value to be set when started in spawn
+
+        init_env (bool): path to the file to be sourced in init, default: None
+
+        workdir (bool): change to this directory in start
+
+        banner_timeout (float): timeout in seconds between lines in the start
+        banner, default 0.1
+    """
+
+    _accepted_kwargs = ['banner_timeout']
 
     def __init__(self,
                  cmd="bash",
@@ -52,7 +75,8 @@ class BashShell(AutoCompletableShell):
                  tty_echo=False,
                  set_rand_promt=True,
                  init_env=None,
-                 workdir=None):
+                 workdir=None,
+                 **kwargs):
         super(BashShell, self).__init__(tty_echo=tty_echo)
         self._prompt = str(uuid.uuid4()) if set_rand_promt else 'NOPROMT'
         self._start_cmd = cmd
@@ -61,6 +85,14 @@ class BashShell(AutoCompletableShell):
         self.set_rand_promt = set_rand_promt
         self.init_env = init_env
         self.workdir = workdir
+        self._banner_timeout = kwargs.get('banner_timeout', 0.1)
+        self._verify_kwargs(kwargs)
+
+    def _verify_kwargs(self, kwargs):
+        for k in kwargs:
+            if k not in self._accepted_kwargs:
+                raise BashShellTypeError(
+                    "BashShell() got an unexpected keyword argument {!r}".format(k))
 
     def _set_bash_environment(self):
         """Set bash settings for shell session.
@@ -75,12 +107,13 @@ class BashShell(AutoCompletableShell):
         detection during command execution.
         """
         LOGGER.log(_LOGLEVEL, "Preparing bash session")
-        output = self._read_until_end()
+        output = self._read_until_end(chunk_timeout=self._banner_timeout)
 
-        self._send_input_line('unset HISTFILE')
+        self._terminal.sendline('unset HISTFILE')
         stty_cmd = "stty cols 400 rows 400 {0}".format(
             'echo' if self.tty_echo else '-echo')
-        self._send_input_line(stty_cmd)
+
+        self._terminal.sendline(stty_cmd)
         self.set_prompt()
         try:
             self._read_until_end(timeout=1)

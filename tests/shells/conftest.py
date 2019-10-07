@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from collections import namedtuple
 import mock
 import pytest
+from crl.interactivesessions import InteractiveSession
 from crl.interactivesessions.shells.bashshell import BashShell
 from crl.interactivesessions.shells.shell import DEFAULT_STATUS_TIMEOUT
 from crl.interactivesessions.shells.msgpythonshell import MsgPythonShell
@@ -15,6 +16,8 @@ from .loststrcomm import (
     CustomTerminalComm)
 from .bashterminalshell import BashTerminalShell
 from .statuscodeverifier import StatusCodeVerifier
+from .mockspawn import MockSpawn
+from .interpreter import State
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
@@ -227,3 +230,15 @@ def msgpythonshell_context(terminal):
         m.exit()
         assert m.delaybeforesend == 1
         terminal.join(timeout=3)
+
+
+@pytest.fixture
+def mockspawn(monkeypatch):
+    monkeypatch.setattr(InteractiveSession.pexpect, 'spawn', MockSpawn)
+
+
+@pytest.fixture
+def mockspawn_state():
+    state = State()
+    MockSpawn.set_state(state)
+    return state
