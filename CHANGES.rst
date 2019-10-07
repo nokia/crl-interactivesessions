@@ -4,6 +4,15 @@ CHANGES
 =======
 
 
+1.2.8
+-----
+
+- Fix BashShell banner reading error in slow shells by adding banner_timeout
+  keyword argument
+
+- Fix hanging of the start in case in case BashShell value of tty_echo is True
+  while in reality the terminal echo is off
+
 1.2.7
 -----
 

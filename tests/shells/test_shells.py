@@ -44,6 +44,7 @@ class MockShell(MockBaseCls):
         super(MockShell, self).__init__(Shell, dir(BashShell),
                                         *args, **kwargs)
         self.tty_echo = False
+        self._terminal = mock.Mock()
 
 
 class MockBash(MockBaseCls):
