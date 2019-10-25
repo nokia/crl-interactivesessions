@@ -1,6 +1,6 @@
 # Copyright (C) 2019, Nokia
 
-FROM python:2.7.17-alpine3.10
+FROM python:3.8.0-alpine3.10
 RUN apk add --no-cache \
         openssh \
         openssh-sftp-server \
