@@ -3,6 +3,10 @@
 CHANGES
 =======
 
+1.2.9
+-----
+
+- Use Alpine Linux in docker-robottests instead of Debian
 
 1.2.8
 -----

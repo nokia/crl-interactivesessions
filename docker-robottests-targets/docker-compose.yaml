@@ -17,7 +17,7 @@ services:
   py2-py3:
     image: py3-image
     build:
-      context: ./py37
+      context: ./py38
       dockerfile: Dockerfile
     ports:
       - "${PORT_PY2_PY3}:22"
@@ -25,7 +25,7 @@ services:
   py2-gw:
     image: py3-image
     build:
-      context: ./py37
+      context: ./py38
       dockerfile: Dockerfile
     ports:
       - "${PORT_PY2_GW}:22"
@@ -42,7 +42,7 @@ services:
   py3-py3:
     image: py3-image
     build:
-      context: ./py37
+      context: ./py38
       dockerfile: Dockerfile
     ports:
       - "${PORT_PY3_PY3}:22"
@@ -50,7 +50,7 @@ services:
   py3-gw:
     image: py3-image
     build:
-      context: ./py37
+      context: ./py38
       dockerfile: Dockerfile
     ports:
       - "${PORT_PY3_GW}:22"
