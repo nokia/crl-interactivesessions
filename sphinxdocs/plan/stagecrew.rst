@@ -215,12 +215,12 @@ Actor system messaging
 
 The messages are basically sequentially numbered Python objects serialized by
 *pickle*.  The messages contains also the header: the sender and the target
-address. The actor system may request again messages if it notices gabs. The
+address. The actor system may request again messages if it notices gaps. The
 actor creation message may contain meta-data which can be used for deciding
 e.g. how and where the new actor should be launched. For example, in meta-data
 can be given the instruction to start the actor in the daemon mode.
 
-In more detail, the actor messages are tuples containing method method names
+In more detail, the actor messages are tuples containing method names
 and proprietary serialization of the arguments. Basically, all Python objects
 are serialized with *pickle*. The exceptions are the proxy objects, string and
 bytes like objects. String and bytes have special serialization because they

@@ -30,7 +30,7 @@ implemented as actors. This would have the following benefits:
    for unit testing purposes, which would simplify unit testing of the
    components of *RemoteRunner*
 
- - For diagnostics an logging actor could be created.
+ - For diagnostics a logging actor could be created.
 
  - New feature development and maintanence of the *RemoteRunner* does not need
    to touch the :ref:`actormodel` framework.
