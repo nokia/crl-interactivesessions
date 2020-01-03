@@ -73,9 +73,17 @@ end is slow in receive) It would be better to use internally *dequeue* and
 *memoryview* as there is no need to pass Python objects in transport but just
 bytes.
 
+For unit testing purposes it is possible to provide the transport and the
+concurrency pair implementation via asyncio_ in Python 3. However, in this case
+it is not possible to test daemon actors. It is also possible to implement
+parts of sender, listener and receiver threads using instead of threads
+asyncio_. However, this solution is only available in Python 3 and so the
+threading based solution has to be anyway implemented.
+
 .. _`UDS socket example`: https://pymotw.com/3/socket/uds.html
 .. _`Python sockets`:  https://docs.python.org/3/library/socket.html
 .. _`TCP sockets`: https://steelkiwi.com/blog/working-tcp-sockets/
+.. _`asyncio`: https://docs.python.org/3/library/asyncio.html
 
 Concurrency implementation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
