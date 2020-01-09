@@ -5,7 +5,7 @@ from collections import OrderedDict
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 class _RunnerTerminalLogLevel(object):
@@ -41,7 +41,7 @@ class _RunnerTerminalLogLevel(object):
     def _setlevel_for_loggers(self):
         for _, logger_ in self.loggers.items():
             logger_.setLevel(self.level)
-        logger.debug('Set log level to %s in modules %s',
+        LOGGER.debug('Set log level to %s in modules %s',
                      self.level, self.modules)
 
     def _backup_levels(self):
@@ -50,7 +50,7 @@ class _RunnerTerminalLogLevel(object):
 
     def _restore_levels(self):
         for module, logger_ in self.loggers.items():
-            logger.debug("Restoring log levels to %s in module '%s'",
+            LOGGER.debug("Restoring log levels to %s in module '%s'",
                          self.backuplevels[module],
                          module)
             logger_.setLevel(self.backuplevels[module])
@@ -62,4 +62,4 @@ class _RunnerTerminalLogLevel(object):
 class _QuietRunnerTerminalLogLevel(_RunnerTerminalLogLevel):
     def __init__(self, level):
         super(_QuietRunnerTerminalLogLevel, self).__init__(level)
-        self.loggers[__name__] = logger
+        self.loggers[__name__] = LOGGER

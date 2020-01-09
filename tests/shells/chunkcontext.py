@@ -30,6 +30,7 @@ class ChunkContext(AttrContextBase):
 
 
 class ChunkMockOs(AttrMockOsBase):
+
     def __init__(self):
         super(ChunkMockOs, self).__init__()
         self._read = os.read

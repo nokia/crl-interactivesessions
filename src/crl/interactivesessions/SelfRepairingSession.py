@@ -3,20 +3,26 @@ import time
 import uuid
 import os
 from pickle import Unpickler
-from io import StringIO
+from io import BytesIO
 import base64
 import itertools
 import traceback
 from contextlib import contextmanager
+import six
 import pexpect
 from . import ShellSubprocess
 from .InteractiveSession import PythonShell
 from .shells.pythonshell import PythonRunNotStarted
 from .shells.pythonshellbase import UnexpectedOutputInPython
 from .shells.shell import TimeoutError
-
+from .shells.remotemodules.compatibility import (
+    to_bytes,
+    to_string)
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
+
+LOGGER = logging.getLogger(__name__)
+_LOGLEVEL = 7  # less than DEBUG
 
 
 class CommandExecutionFailed(Exception):
@@ -91,7 +97,7 @@ class LocalShellSubprocess(ShellSubprocess.ShellSubprocess):
     def run(self, cmd, timeout=60):
         with self._run_wrapper():
             self._cmd = cmd
-            logging.log(7, "Runing command %d: %s", self._run_id, cmd)
+            LOGGER.log(_LOGLEVEL, "Runing command %d: %s", self._run_id, cmd)
             return self._run_with_error_serialization(
                 self._get_run_creation_command(timeout), timeout=timeout)
 
@@ -122,9 +128,9 @@ class LocalShellSubprocess(ShellSubprocess.ShellSubprocess):
         if self.is_running() or self._shell.is_terminal_hung(timeout=1):
             result = self._try_to_get_result_from_output(
                 self._shell.stop_run())
-            logging.warning("Forcefully terminated in node %s: %s",
-                            self._node,
-                            result)
+            LOGGER.warning("Forcefully terminated in node %s: %s",
+                           self._node,
+                           result)
 
     def get_backed_up_result(self, timeout=10):
         expect_timeout = self._get_expect_timeout(timeout)
@@ -135,11 +141,11 @@ class LocalShellSubprocess(ShellSubprocess.ShellSubprocess):
                     self._get_backup_creation_command(),
                     timeout=1)
             except ShellSubprocess.ResultNotStoredYet:
-                logging.log(7, "%d/%d Waiting for result of run %d (%s)",
-                            retry_count,
-                            max_retries,
-                            self._run_id,
-                            self._cmd)
+                LOGGER.log(_LOGLEVEL, "%d/%d Waiting for result of run %d (%s)",
+                           retry_count,
+                           max_retries,
+                           self._run_id,
+                           self._cmd)
                 time.sleep(1)
         raise RestoreTimedOut(self._run_id, self._cmd)
 
@@ -171,18 +177,20 @@ class LocalShellSubprocess(ShellSubprocess.ShellSubprocess):
 
     def _get_result_wrapper_from_output(self, output):
         with self.unify_deserialize_errors(output):
-            decoded_output = base64.b64decode(output)
-            outputstream = StringIO(decoded_output)
+            decoded_output = base64.b64decode(to_bytes(output))
+            outputstream = BytesIO(decoded_output)
             return ShellSubprocessPickler(outputstream).load()
 
     def _get_run_creation_command(self, timeout):
         join_timeout = timeout if timeout > 0 else None
-        return "{0}({1}, '{2}', timeout={3}, executable='{4}')".format(
-            ShellSubprocess.RunShellSubprocess.__name__,
-            self._run_id,
-            self._serialize(self._cmd),
-            join_timeout,
-            self._executable)
+        return ("{name}({run_id}, {b}{serialized_cmd!r}, "
+                "timeout={timeout}, executable='{executable}')".format(
+                    name=ShellSubprocess.RunShellSubprocess.__name__,
+                    run_id=self._run_id,
+                    b='' if six.PY3 else 'b',
+                    serialized_cmd=self._serialize(self._cmd),
+                    timeout=join_timeout,
+                    executable=self._executable))
 
     def _get_backup_creation_command(self):
         return "{0}({1})".format(ShellSubprocess.ReadonlyShellSubprocess.__name__,
@@ -196,8 +204,8 @@ class LocalShellSubprocess(ShellSubprocess.ShellSubprocess):
         except Exception as e:
             e.trace = self._extract_tb()
             # pylint: disable=no-member
-            logging.log(7, "Failed to deseriliaze, traceback:: \n%s",
-                        ''.join(e.trace))
+            LOGGER.log(_LOGLEVEL, "Failed to deseriliaze, traceback:: \n%s",
+                       ''.join(e.trace))
             raise UnexpectedTerminalOutput(self._run_id,
                                            self._cmd,
                                            output,
@@ -249,7 +257,7 @@ class SelfRepairingSession(object):
                                           timeout=timeout,
                                           executable=executable)
         except Exception as exception:  # pylint: disable=broad-except
-            logging.debug('Ignoring exception: %s', exception)
+            LOGGER.debug('Ignoring exception: %s', exception)
         return result
 
     def run_no_validate(  # pylint:disable=unused-argument
@@ -267,14 +275,14 @@ class SelfRepairingSession(object):
         try:
             yield
         except SessionNotInitialized as exception:
-            logging.log(7, "%d/%d: Session not initialized for run %s, %s",
-                        retry_count, self._max_retries, cmd, exception)
+            LOGGER.log(_LOGLEVEL, "%d/%d: Session not initialized for run %s, %s",
+                       retry_count, self._max_retries, cmd, exception)
             self._handle_session_not_working(retry_count, exception)
         except RunNotStarted:
-            logging.log(7, "%d/%d: Run not started, running again "
-                        "'%s'", retry_count, self._max_retries, cmd)
+            LOGGER.log(_LOGLEVEL, "%d/%d: Run not started, running again "
+                                  "'%s'", retry_count, self._max_retries, cmd)
         except TimeoutError:
-            logging.debug('TimeoutError: stop run')
+            LOGGER.debug('TimeoutError: stop run')
             self._session.get_current_shell().stop_run()
             raise
 
@@ -286,12 +294,12 @@ class SelfRepairingSession(object):
 
     def _try_to_create_new_session(self):
         try:
-            logging.debug("Creating a new session for %s",
-                          self.__class__.__name__)
+            LOGGER.debug("Creating a new session for %s",
+                         self.__class__.__name__)
             self._create_new_session()
         except (pexpect.TIMEOUT, TimeoutError):
-            logging.log(7, 'Session creation timed out: sleeping %d',
-                        self._sleep_between_retries)
+            LOGGER.log(_LOGLEVEL, 'Session creation timed out: sleeping %d',
+                       self._sleep_between_retries)
             time.sleep(self._sleep_between_retries)
 
     def _verify_session_and_run(self, cmd, timeout=-1):
@@ -307,11 +315,11 @@ class SelfRepairingSession(object):
         try:
             result = self._runner.run(cmd, timeout=timeout)
         except UnexpectedTerminalOutput as e:
-            logging.warning(self._get_exception_log(e))
+            LOGGER.warning(self._get_exception_log(e))
             self._try_to_create_new_session()
             result = self._runner.get_backed_up_result(timeout=timeout)
         except PythonRunNotStarted as e:
-            logging.debug(self._get_exception_log(e))
+            LOGGER.debug(self._get_exception_log(e))
             result = self._try_to_get_hung_run_result(timeout=timeout)
         return result
 
@@ -338,7 +346,9 @@ class SelfRepairingSession(object):
 
     @staticmethod
     def _strip_from_right(result):
-        return (result[0], result[1].rstrip('\r\n'), result[2].rstrip('\r\n'))
+        return (result[0],
+                to_string(result[1]).rstrip('\r\n'),
+                to_string(result[2]).rstrip('\r\n'))
 
     def _create_new_session(self):
         try:
@@ -347,7 +357,7 @@ class SelfRepairingSession(object):
                 self._session_close()
             self._create_session()
         except Exception as e:
-            logging.debug(self._get_exception_log(e))
+            LOGGER.debug(self._get_exception_log(e))
             if self._session:
                 self._session_close()
             raise
@@ -369,9 +379,9 @@ class SelfRepairingSession(object):
 
     def _session_close(self, session=None):
         session = session if session else self._session
-        logging.debug('Closing session for %s %s',
-                      repr(session),
-                      self.__class__.__name__)
+        LOGGER.debug('Closing session for %s %s',
+                     repr(session),
+                     self.__class__.__name__)
         self._restore_delaybeforesend()
         self._session.close()
         self._sessions.remove(self._session)
@@ -425,9 +435,9 @@ class SelfRepairingSession(object):
         try:
             self._finalize_session()
         except Exception as e:  # pylint: disable=broad-except
-            logging.warning("Failed to finalize %s: %s: %s",
-                            self.__class__.__name__,
-                            e, e.args)
+            LOGGER.warning("Failed to finalize %s: %s: %s",
+                           self.__class__.__name__,
+                           e, e.args)
         self._session_close()
 
     def _finalize_session(self):
@@ -439,4 +449,4 @@ class SelfRepairingSession(object):
         try:
             self._create_new_session()
         except Exception as e:  # pylint: disable=broad-except
-            logging.debug(self._get_exception_log(e))
+            LOGGER.debug(self._get_exception_log(e))

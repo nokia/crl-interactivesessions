@@ -1,23 +1,18 @@
 import sys
-from contextlib import contextmanager
-from collections import namedtuple
+import time
 from io import StringIO
-import mock
 import pytest
 import pexpect
-from crl.interactivesessions.shells.msgpythonshell import MsgPythonShell
+from crl.interactivesessions.shells.msgpythonshell import (
+    MsgPythonShell,
+    FatalPythonError)
 from crl.interactivesessions.shells.terminalclient import (
     TerminalClientError,
     TerminalClientFatalError)
-from crl.interactivesessions.shells.remotemodules.msgmanager import (
-    StrComm,
-    Retry)
 from crl.interactivesessions.shells.remotemodules.compatibility import (
     PY3,
     to_bytes)
-from .loststrcomm import (
-    LostStrComm,
-    CustomTerminalComm)
+from crl.interactivesessions.shells.remotemodules.msgs import ServerIdReply
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
@@ -27,126 +22,6 @@ __copyright__ = 'Copyright (C) 2019, Nokia'
 @pytest.fixture(autouse=True)
 def mock_term_functions_in_msgpythonshell(mock_term_functions):
     pass
-
-
-@pytest.fixture
-def msgpythonshell(normal_pythonterminal):
-    with msgpythonshell_context(normal_pythonterminal) as m:
-        yield m
-
-
-@pytest.fixture
-def shortretry_msgpythonshell(retry_shellcontext):
-    with retry_shellcontext(Retry(tries=20, interval=0.4, timeout=0.5)) as s:
-        yield s
-
-
-@pytest.fixture
-def terminate_msgpythonshell(retry_shellcontext, normal_pythonterminal):
-    with retry_shellcontext(Retry(tries=3, interval=0.4, timeout=0.5)) as s:
-        try:
-            yield s
-        finally:
-            normal_pythonterminal.terminate()
-
-
-@pytest.fixture
-def retry_shellcontext(mock_strcomm, normal_pythonterminal):
-    @contextmanager
-    def ctx(retry):
-        try:
-            MsgPythonShell.set_retry(retry)
-            with msgpythonshell_context(normal_pythonterminal) as m:
-                yield m
-        finally:
-            MsgPythonShell.reset_retry()
-
-    return ctx
-
-
-@pytest.fixture
-def client_rubbish_msgpythonshell(client_rubbish_pythonterminal_ctx):
-    with msgpythonshell_context(client_rubbish_pythonterminal_ctx.pythonterminal) as m:
-        yield m
-
-
-@pytest.fixture
-def server_rubbish_msgpythonshell(server_rubbish_pythonterminal_ctx):
-    with msgpythonshell_context(server_rubbish_pythonterminal_ctx.pythonterminal) as m:
-        yield m
-
-
-def corrupt(start, s):
-    return s[:start] + len(s) * b'x'
-
-
-def precorrupt(s):
-    return len(s) * b'x' + s
-
-
-def postcorrupt(s):
-    return s + len(s) * b'x'
-
-
-@pytest.fixture
-def mock_strcomm(request):
-    lst = LostStrComm(**request.param)
-
-    def strcomm_fact(*args, **kwargs):
-        s = StrComm(*args, **kwargs)
-        lst.set_strcomm(s)
-        return lst
-
-    with customterminalcomm_context():
-        with mock.patch('crl.interactivesessions.shells.'
-                        'remotemodules.msgmanager.StrComm') as p:
-            p.side_effect = strcomm_fact
-            yield lst
-
-
-@contextmanager
-def customterminalcomm_context():
-    with mock.patch('crl.interactivesessions.shells.'
-                    'terminalclient.TerminalComm',
-                    side_effect=CustomTerminalComm) as p:
-        yield p
-
-
-class ShellContext(namedtuple('ShellContext', ['shell', 'context'])):
-    pass
-
-
-@pytest.fixture
-def client_rubbish_pythonterminal_ctx(rubbish_context, request):
-    with rubbish_context['client'] as ctx:
-        yield ctx
-
-
-@pytest.fixture
-def server_rubbish_pythonterminal_ctx(rubbish_context, request):
-    with rubbish_context['server'] as ctx:
-        yield ctx
-
-
-@pytest.fixture
-def chunk_msgpythonshell(chunk_pythonterminal_ctx):
-    with msgpythonshell_context(chunk_pythonterminal_ctx.pythonterminal) as m:
-        yield m
-
-
-@contextmanager
-def msgpythonshell_context(terminal):
-    m = MsgPythonShell()
-    m.set_terminal(terminal)
-    m.delaybeforesend = 1
-    m.start()
-    assert m.delaybeforesend == 0
-    try:
-        yield m
-    finally:
-        m.exit()
-        assert m.delaybeforesend == 1
-        terminal.join(timeout=3)
 
 
 def test_exec_command_success(msgpythonshell):
@@ -192,6 +67,18 @@ def some_lost_strcomm():
         {'probability_of_lost': '1', 'modifier': postcorrupt}], indirect=True)
 
 
+def corrupt(start, s):
+    return s[:start] + len(s) * b'x'
+
+
+def precorrupt(s):
+    return len(s) * b'x' + s
+
+
+def postcorrupt(s):
+    return s + len(s) * b'x'
+
+
 @some_lost_strcomm()
 def test_exec_command_lostmsg(mock_strcomm, shortretry_msgpythonshell):
     shell = shortretry_msgpythonshell
@@ -231,6 +118,23 @@ def test_exec_command_timeout(mock_strcomm, shortretry_msgpythonshell):
             shortretry_msgpythonshell.exec_command('time.sleep(0.5)', timeout=0.1)
 
     assert 'Timeout' in str(excinfo.value)
+
+
+def test_server_id_received_only_once(custommsgpythonshell, customterminalclient):
+    time.sleep(0.5)
+    custommsgpythonshell.exec_command("'exec-content'")
+    serveridreplies = [m for m in customterminalclient.received_msgs
+                       if isinstance(m, ServerIdReply)]
+    assert len(serveridreplies) == 1
+
+
+def test_duplicate_messages(duplicateshell):
+    cmd = "'cmd'"
+    duplicateshell.exec_command(cmd)
+    with pytest.raises(FatalPythonError) as excinfo:
+        duplicateshell.exec_command(cmd)
+
+    assert 'MsgCachesAlreadyRemoved' in str(excinfo.value)
 
 
 def test_msgpythonshell_noattrs():

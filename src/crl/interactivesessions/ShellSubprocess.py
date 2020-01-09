@@ -13,6 +13,10 @@ from contextlib import contextmanager
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
+LOGGER = logging.getLogger(__name__)
+
+PY3 = (sys.version_info.major == 3)
+
 
 class MismatchInRunId(Exception):
     pass
@@ -85,7 +89,7 @@ class FailedExecutionResult(ExecutionResult):
 
     def _get_result(self):
         if self._get_trace():
-            logging.log(7, self._get_trace())
+            LOGGER.debug(self._get_trace())
         raise self._exception
 
     def __str__(self):
@@ -146,7 +150,11 @@ class RemoteShellSubprocess(ShellSubprocess):
 
         print(self.get_start_trigger())
         with self._error_serialization():
-            print(self._serialize(self._run()))
+            print(self._to_string(self._serialize(self._run())))
+
+    @staticmethod
+    def _to_string(b):
+        return b.decode('utf-8') if PY3 else b
 
     @contextmanager
     def _error_serialization(self):
@@ -155,20 +163,20 @@ class RemoteShellSubprocess(ShellSubprocess):
         except Exception as e:  # pylint: disable=broad-except
             e.trace = self._extract_tb()
 
-            print(self._serialize(FailedExecutionResult(self._run_id,
-                                                        self._cmd,
-                                                        e)))
+            print(self._to_string(self._serialize(FailedExecutionResult(self._run_id,
+                                                                        self._cmd,
+                                                                        e))))
 
     def _run(self):
         raise NotImplementedError()
 
     def _backup(self, python_object):
-        with open(self.pickled_backup, 'w') as backup:
+        with open(self.pickled_backup, 'wb') as backup:
             pickle.dump(python_object, backup, protocol=0)
 
     def _restore(self):
         try:
-            with open(self.pickled_backup, 'r') as backup:
+            with open(self.pickled_backup, 'rb') as backup:
                 return pickle.load(backup)
         except IOError as e:
             if e.errno == 2:

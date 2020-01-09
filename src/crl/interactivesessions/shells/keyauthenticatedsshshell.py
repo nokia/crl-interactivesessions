@@ -9,7 +9,7 @@ from .shell import TimeoutError
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 _LOGLEVEL = 7
 
 
@@ -68,7 +68,7 @@ class KeyAuthenticatedSshShell(SshShell):
 
         """
         buffer = self.wait_for_initial_prompt()
-        logger.log(_LOGLEVEL, "'%s'", buffer)
+        LOGGER.log(_LOGLEVEL, "'%s'", buffer)
         self._send_input_line('echo @$?@')
         try:
             status_output = self._read_until_end(timeout=1)

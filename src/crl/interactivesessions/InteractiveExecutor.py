@@ -3,6 +3,9 @@ from six import iteritems
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
+LOGGER = logging.getLogger(__name__)
+_LOGLEVEL = 7  # less than DEBUG
+
 
 class InteractiveExecutor(object):
 
@@ -14,22 +17,22 @@ class InteractiveExecutor(object):
 
     def run(self, node, command, timeout=60, validate_return_status=False):
         self.run_number += 1
-        logging.log(7, "Running command %d in %s: "
-                    "'%s', "
-                    "timeout: %s, "
-                    "validate_return_status: %s",
-                    self.run_number,
-                    node,
-                    command,
-                    str(timeout),
-                    str(validate_return_status))
+        LOGGER.log(_LOGLEVEL, "Running command %d in %s: "
+                              "'%s', "
+                              "timeout: %s, "
+                              "validate_return_status: %s",
+                   self.run_number,
+                   node,
+                   command,
+                   str(timeout),
+                   str(validate_return_status))
         session = self._get_or_create_session_for_node(node)
         result = self._get_run_function(
             session, validate_return_status)(
                 command,
                 timeout=self._unify_timeout(timeout))
-        logging.log(7, "Run %d returned %s",
-                    self.run_number, result)
+        LOGGER.log(_LOGLEVEL, "Run %d returned %s",
+                   self.run_number, result)
         return result
 
     @staticmethod

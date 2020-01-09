@@ -69,7 +69,8 @@ disable=missing-docstring,anomalous-backslash-in-string,
     relative-import,redefined-outer-name,redefined-builtin,eval-used,
     exec-used,wildcard-import,
     inconsistent-return-statements,fixme,no-name-in-module,abstract-method,
-    useless-object-inheritance
+    useless-object-inheritance,no-else-break,unnecessary-comprehension,
+    invalid-overridden-method
 
 [REPORTS]
 
@@ -241,7 +242,7 @@ notes=FIXME,XXX,TODO
 [SIMILARITIES]
 
 # Minimum lines number of a similarity.
-min-similarity-lines=4
+min-similarity-lines=5
 
 # Ignore comments when computing similarities.
 ignore-comments=yes

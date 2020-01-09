@@ -27,9 +27,10 @@ Remote Test Setup
     Remove Tmp Directories
 
 Remove Tmp Directories
-    :FOR    ${target}     IN    target1    target2
-    \    RemoteRunner.Execute Command In Target    rm -rf /tmp/runner /tmp/script
-    \    ...    target=${target}
+    FOR    ${target}     IN    target1    target2
+        RemoteRunner.Execute Command In Target    rm -rf /tmp/runner /tmp/script
+        ...    target=${target}
+    END
 
 Remove Files In Target
     [Arguments]  ${target}  ${file}  ${dir}
@@ -61,11 +62,14 @@ Set RemoteScript Targets
     ...                        username=${HOST1['user']}
     ...                        password=${HOST1['password']}
     ...                        name=target1
-
+    Run Keyword If   'port' in ${HOST1}
+    ...    RemoteScript.Set Target Property    target1    port    ${HOST1['port']}
     RemoteScript.Set Target    host=${HOST2['host']}
     ...                        username=${HOST2['user']}
     ...                        password=${HOST2['password']}
     ...                        name=target2
+    Run Keyword If   'port' in ${HOST2}
+    ...    RemoteScript.Set Target Property    target2    port    ${HOST2['port']}
 
 
 Compare Results

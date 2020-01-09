@@ -15,6 +15,7 @@ of the pseudo terminal libraries. Currently, only *pexpect* is supported.
    robotdocs
    Readme <README>
    Stability Tests <stability>
+   Development Plan <plan_index>
    Change History <CHANGES>
 
 Indices and tables

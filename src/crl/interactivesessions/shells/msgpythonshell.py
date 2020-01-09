@@ -79,7 +79,7 @@ class MsgPythonShell(RawPythonShell):
         self._fatalerror = None
 
     def _get_server_id_in_start(self, timeout):
-        r = self._client.receive(timeout)
+        r = self._client.receive_and_send_ack(timeout)
         return r.server_id
 
     def exec_command(self, cmd, timeout=-1):
@@ -125,6 +125,7 @@ class MsgPythonShell(RawPythonShell):
         except FatalPythonError as e:
             LOGGER.debug(e)
             self._fatalerror = e
+            raise
         except TerminalClientFatalError as e:
             self._fatalerror = FatalPythonError(e)
             raise

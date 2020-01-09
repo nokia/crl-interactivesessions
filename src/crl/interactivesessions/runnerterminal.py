@@ -405,7 +405,7 @@ class RunnerTerminal(object):
         if steeringstring == b'exception':
             if hasattr(outobj, 'trace'):
                 LOGGER.debug("Remote Traceback: \n%s", ''.join(outobj.trace))
-            raise outobj
+            raise outobj  # pylint: disable=raising-bad-type
         if steeringstring == b'timeout':
             raise RemoteTimeout(response_id=outobj)
 

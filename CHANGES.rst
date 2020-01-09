@@ -3,10 +3,55 @@
 CHANGES
 =======
 
-1.2.2b0
--------
+1.2.9
+-----
 
-- Refactor output reading in _set_bash_environment
+- Use Alpine Linux in docker-robottests instead of Debian
+
+1.2.8
+-----
+
+- Fix BashShell banner reading error in slow shells by adding banner_timeout
+  keyword argument
+
+- Fix hanging of the start in case in case BashShell value of tty_echo is True
+  while in reality the terminal echo is off
+
+1.2.7
+-----
+
+- Add stability tests documentation back
+
+- Improve logging by moving and requiring all logging to be under
+  'crl.interactivesessions' logger.
+
+- Make _RemoteProxy and _RecursiveProxy default timeouts configurable
+
+1.2.6
+-----
+
+- Raise FatalPythonError in MsgPythonShell.exec_command in case the remote
+  server has failed
+
+1.2.5
+-----
+
+- Fix python 2 & 3 compatibility for SelfRepairingSession
+
+1.2.4
+-----
+
+- Acknowledge server ID reply in start of MsgPythonShell
+
+1.2.3
+-----
+
+- Set sys.stdout.fileno() blocking in remote
+
+1.2.2
+-----
+
+- Fix remote PythonServer failure in case stdout is not writable
 
 1.2.1
 -----

@@ -1,0 +1,56 @@
+# Copyright (C) 2019, Nokia
+
+# This configuration defines one sshd test cluster per each robottests tox env
+---
+version: '3'
+
+services:
+  # Python 2 env cluster: Python 2 and 3 nodes and gateway
+  py2-py2:
+    image: py2-image
+    build:
+      context: ./py27
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT_PY2_PY2}:22"
+
+  py2-py3:
+    image: py3-image
+    build:
+      context: ./py38
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT_PY2_PY3}:22"
+
+  py2-gw:
+    image: py3-image
+    build:
+      context: ./py38
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT_PY2_GW}:22"
+
+  # Python 3 env cluster: Python 2 and 3 nodes and gateway
+  py3-py2:
+    image: py2-image
+    build:
+      context: ./py27
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT_PY3_PY2}:22"
+
+  py3-py3:
+    image: py3-image
+    build:
+      context: ./py38
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT_PY3_PY3}:22"
+
+  py3-gw:
+    image: py3-image
+    build:
+      context: ./py38
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT_PY3_GW}:22"
