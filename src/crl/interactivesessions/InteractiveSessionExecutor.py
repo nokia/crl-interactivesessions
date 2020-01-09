@@ -4,7 +4,7 @@ from .InteractiveSession import InteractiveSession, UnknownShellState
 from .InteractiveSession import SshShell, PythonShell, NamespaceShell
 
 
-__copyright__ = 'Copyright (C) 2019, Nokia'
+__copyright__ = 'Copyright (C) 2019-2020, Nokia'
 
 LOGGER = logging.getLogger(__name__)
 
@@ -29,14 +29,19 @@ class InteractiveSessionExecutor(object):
                  node_ip=None,
                  node_user=None,
                  node_password=None,
+                 python_command=None,
                  node_namespace=None,
                  dhcpagenthost=None,
                  work_dir=None,
                  management_node_floating_ip=None):
         """
 
-        node_name is the de to connect to, or None to connect to the
+        node_name is the node to connect to, or None to connect to the
         controller.
+
+        python_command is python2 or python3 or None
+        This will be used as alias python command before pushing PythonShell.
+
         """
         self._management_node_floating_ip = management_node_floating_ip
         self.node_name = node_name
@@ -46,6 +51,8 @@ class InteractiveSessionExecutor(object):
         self.node_ip = node_ip
         self.node_user = node_user
         self.node_password = node_password
+        self.init_env = \
+            'content: alias python=' + python_command if python_command else None
         self.node_namespace = node_namespace
         self.dhcpagenthost = dhcpagenthost
         self._controller_shell = None
@@ -148,16 +155,19 @@ class InteractiveSessionExecutor(object):
     def _connect_to_node_via_floating_ip(self):
         self._session.spawn(SshShell(self._management_node_floating_ip,
                                      self.node_user,
-                                     self.node_password))
+                                     self.node_password,
+                                     init_env=self.init_env))
         if self.node_name != self._get_hostname():
             self._session.push(SshShell(self.node_name,
                                         self.node_user,
-                                        self.node_password))
+                                        self.node_password,
+                                        init_env=self.init_env))
 
     def _connect_to_controller(self):
         self._session.spawn(SshShell(self.host_name,
                                      self.host_user,
-                                     self.host_password))
+                                     self.host_password,
+                                     init_env=self.init_env))
         self._controller_shell = self._session.current_shell()
 
     def _try_to_connect_dhcpagenthost(self):

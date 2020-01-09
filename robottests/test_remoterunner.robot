@@ -1,4 +1,4 @@
-# Copyright (C) 2019, Nokia
+# Copyright (C) 2019-2020, Nokia
 
 *** Settings ***
 
@@ -29,6 +29,7 @@ Force Tags     remoterunner
 
 @{SHELLDICTS1}=    ${HOST1}
 @{SHELLDICTS2}=    ${GW}    ${HOST2_VIA_GW}
+@{SHELLDICTS3}=    ${GW}    ${HOST4_VIA_GW}
 
 ${REPEAT}    20
 
@@ -63,6 +64,9 @@ Set RemoteRunner Targets
     RemoteRunner.Set Target    shelldicts=${SHELLDICTS2}
     ...                        name=target2
 
+    RemoteRunner.Set Target    shelldicts=${SHELLDICTS3}
+    ...                        name=target3
+
 Create Random File
     filehelper.Create Random File    targetlocal    100000
 
@@ -74,6 +78,7 @@ Verify Run
 
 Test Execute Nohup Background In Target
     [Arguments]  ${target}
+    Execute Command In Target    command=pwd    target=${target}
     ${pid}=         Execute Nohup Background In Target
     ...             command=echo foo;echo bar >&2;sleep 4
     ...             target=${target}
@@ -294,16 +299,19 @@ Template Test Execute Command In Target Progress Log True
     [Template]  Test Execute Command In Target Progress Log True
     target1
     target2
+    target3
 
 Template Test Execute Command In Target
     [Template]  Test Execute Command In Target
     target1
     target2
+    target3
 
 Template Test Execute Background Commands
     [Template]  Test Execute Background Commands
     target1
     target2
+    target3
 
 Template Test File Copying
     [Template]  Test File Copying

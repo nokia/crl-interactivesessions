@@ -11,7 +11,7 @@ from .sshoptions import scpoptions
 from .registershell import RegisterShell
 
 
-__copyright__ = 'Copyright (C) 2019, Nokia'
+__copyright__ = 'Copyright (C) 2019-2020, Nokia'
 
 LOGGER = logging.getLogger(__name__)
 _LOGLEVEL = 7
@@ -58,7 +58,10 @@ class BashShell(AutoCompletableShell):
 
         tty_echo (bool): terminal echo value to be set when started in spawn
 
-        init_env (bool): path to the file to be sourced in init, default: None
+        init_env (str): path to the file to be sourced in init or
+                        bash command to be executed if starts with 'content:'.
+                        example: 'content: alias python=python3'
+                        default: None
 
         workdir (bool): change to this directory in start
 
@@ -154,7 +157,11 @@ class BashShell(AutoCompletableShell):
 
     def _init_env_if_needed(self, output):
         if self.init_env is not None:
-            out = self.exec_command('. {}'.format(self.init_env))
+            if self.init_env.startswith('content:'):
+                self.init_env = self.init_env[len('content:'):].strip()
+                out = self.exec_command(self.init_env)
+            else:
+                out = self.exec_command('. {}'.format(self.init_env))
             ret = self.get_status_code()
             if ret != 0:
                 raise SourceInitFileFailed(out)

@@ -1,4 +1,4 @@
-# Copyright (C) 2019, Nokia
+# Copyright (C) 2019-2020, Nokia
 
 *** Settings ***
 Library    ClusterExec.py
@@ -12,6 +12,7 @@ Initialize Library
     ClusterExec.Set Host    ${GW}
     ClusterExec.Add Node    ${HOST1_VIA_GW}
     ClusterExec.Add Node    ${HOST2_VIA_GW}
+    ClusterExec.Add Node    ${HOST3_VIA_GW}
     ClusterExec.Initialize Executor
 
 *** Test Cases ***
@@ -24,5 +25,11 @@ Command execution in python 2 node
 Command execution in python 3 node
     ${status}  ${stdout}  ${stderr}=    ClusterExec.Run Cmd In Node
     ...   ${HOST2_VIA_GW.host}    whoami
+    Should Be Equal As Strings   ${status}    0
+    Should Be Equal   ${stdout}    root
+
+Command execution in python 3 node with unlinked python
+    ${status}  ${stdout}  ${stderr}=    ClusterExec.Run Cmd In Node
+    ...   ${HOST3_VIA_GW.host}    whoami
     Should Be Equal As Strings   ${status}    0
     Should Be Equal   ${stdout}    root

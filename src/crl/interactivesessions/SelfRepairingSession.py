@@ -19,7 +19,7 @@ from .shells.remotemodules.compatibility import (
     to_bytes,
     to_string)
 
-__copyright__ = 'Copyright (C) 2019, Nokia'
+__copyright__ = 'Copyright (C) 2019-2020, Nokia'
 
 LOGGER = logging.getLogger(__name__)
 _LOGLEVEL = 7  # less than DEBUG
@@ -217,10 +217,14 @@ class SelfRepairingSession(object):
         .. warning::
 
             This class is deprecated. Please use it only for legacy purposes.
+
+            python_command is python2 or python3 or None
+            This will be used as alias python command before pushing PythonShell.
     """
     def __init__(self,
                  node_name,
                  create_runner_session,
+                 python_command=None,
                  max_retries=10,
                  sleep_between_retries=3):
         self._create_runner_session = create_runner_session
@@ -228,6 +232,7 @@ class SelfRepairingSession(object):
         self._max_retries = int(max_retries)
         self._sleep_between_retries = int(sleep_between_retries)
         self._session = None
+        self.python_command = python_command
         self._sessions = set([])
         self._work_dir = os.path.join('/tmp', str(uuid.uuid4()))
         self._saved_delaybeforesend = 0.05
@@ -389,6 +394,7 @@ class SelfRepairingSession(object):
 
     def _create_session(self):
         self._session = self._create_runner_session(self._node_name,
+                                                    python_command=self.python_command,
                                                     work_dir=self._work_dir)
         self._sessions.add(self._session)
         self._prepare_session()

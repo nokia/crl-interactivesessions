@@ -16,7 +16,7 @@ from crl.interactivesessions.shells.sshoptions import sshoptions
 from .echochannel import EchoChannel
 
 
-__copyright__ = 'Copyright (C) 2019, Nokia'
+__copyright__ = 'Copyright (C) 2019-2020, Nokia'
 
 
 class MockBaseCls(object):
@@ -181,6 +181,17 @@ def test_bash_init_env():
     # pylint: disable=no-member
     assert b.exec_command.mock_calls == [
         mock.call('. init_env'),
+        mock.call('echo $?', timeout=5)]
+
+
+@pytest.mark.usefixtures('mock_bash_bases', 'mock_detect_bash_prompt')
+def test_bash_init_env_with_content():
+    b = BashShell(init_env='content: alias python=python3')
+    b.exec_command.return_value = '0'
+    b.start()
+    # pylint: disable=no-member
+    assert b.exec_command.mock_calls == [
+        mock.call('alias python=python3'),
         mock.call('echo $?', timeout=5)]
 
 

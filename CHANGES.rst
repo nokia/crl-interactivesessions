@@ -1,7 +1,15 @@
-.. Copyright (C) 2019, Nokia
+.. Copyright (C) 2019-2020, Nokia
 
 CHANGES
 =======
+1.3.0
+-----
+
+- Refactor BashShell init_env parameter, alias python command executing
+  is added as option
+
+- Add new parameter python_command to SelfRepairingSession and
+  InteractiveSessionExecutor classes' constructor.
 
 1.2.9
 -----
