@@ -1,12 +1,13 @@
 #!/bin/bash
 
-# Copyright (C) 2019, Nokia
+# Copyright (C) 2019-2020, Nokia
 
 set -u
 set -e
 set -x
+docker-compose down --remove-orphans
 VARIABLEFILE=$1
-docker rmi py2-image py3-image || true
+docker rmi py2-image py3-image py3-no-symlink-image || true
 docker-compose build --force-rm
 docker-compose up -d
 EXIT_VALUE=0

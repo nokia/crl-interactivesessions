@@ -5,7 +5,7 @@ from crl.interactivesessions.InteractiveExecutor import InteractiveExecutor
 from crl.interactivesessions.InteractiveSessionExecutor import InteractiveSessionExecutor
 
 
-__copyright__ = 'Copyright (C) 2019, Nokia'
+__copyright__ = 'Copyright (C) 2019-2020, Nokia'
 
 
 class CustomInteractiveSession(InteractiveSession):
@@ -39,12 +39,16 @@ class ClusterExec(object):
         self.interactiveexecutor = InteractiveExecutor(self._create_selfrepairingsession)
 
     def _create_selfrepairingsession(self, node_name):
+        kwargs = dict()
+        if 'python_command' in self.nodes[node_name]:
+            kwargs = {'python_command': self.nodes[node_name].python_command}
         return SelfRepairingSession(node_name=node_name,
                                     create_runner_session=self._create_runnersession,
                                     max_retries=3,
-                                    sleep_between_retries=1)
+                                    sleep_between_retries=1,
+                                    **kwargs)
 
-    def _create_runnersession(self, node_name, work_dir):
+    def _create_runnersession(self, node_name, work_dir, python_command='python'):
         CustomInteractiveSession.set_spawn_port(self.host.port)
         with mock.patch('crl.interactivesessions.'
                         'InteractiveSessionExecutor.InteractiveSession',
@@ -56,6 +60,7 @@ class ClusterExec(object):
                                              node_ip=self.nodes[node_name].host,
                                              node_user=self.nodes[node_name].user,
                                              node_password=self.nodes[node_name].password,
+                                             python_command=python_command,
                                              node_namespace=None,
                                              dhcpagenthost=None,
                                              work_dir=work_dir,
