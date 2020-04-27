@@ -2,6 +2,7 @@ import re
 import logging
 from crl.interactivesessions.interactivesessionexceptions import (
     InteractiveSessionError)
+from .remotemodules.compatibility import to_bytes
 from .sshshell import SshShell
 from .registershell import RegisterShell
 from .shell import TimeoutError
@@ -50,7 +51,7 @@ class KeyAuthenticatedSshShell(SshShell):
         super(KeyAuthenticatedSshShell, self).__init__(
             ip=host, tty_echo=tty_echo)
         self.ip = host
-        self.initial_prompt = re.compile(initial_prompt + "$") \
+        self.initial_prompt = re.compile(to_bytes(initial_prompt + "$")) \
             if initial_prompt else None
 
     def get_start_cmd(self):
