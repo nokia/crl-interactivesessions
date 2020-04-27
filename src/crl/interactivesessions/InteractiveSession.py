@@ -169,12 +169,12 @@ class InteractiveSession(object):
         if self.dump_outgoing is not None:
             open(self.dump_outgoing, "a").write(
                 "*" * 30 + "NEW TERMINAL" + "*" * 30 + "\n")
-            terminal.logfile_send = open(self.dump_outgoing, "a")
+            terminal.logfile_send = open(self.dump_outgoing, "ab")
 
         if self.dump_received is not None:
             open(self.dump_received, "a").write(
                 "*" * 30 + "NEW TERMINAL" + "*" * 30 + "\n")
-            terminal.logfile_read = open(self.dump_received, "a")
+            terminal.logfile_read = open(self.dump_received, "ab")
 
         self.terminal = terminal
         self.terminal.timeout = self.terminal_expect_timeout

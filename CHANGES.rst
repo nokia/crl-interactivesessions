@@ -2,6 +2,15 @@
 
 CHANGES
 =======
+
+1.3.1
+-----
+
+- Fix pexpect TypeErrError when terminal has logfile defined.
+
+- Fix pexpect can't find prompt when KeyauthenticatedSshShell initial_prompt
+  attribute is string.
+
 1.3.0
 -----
 
