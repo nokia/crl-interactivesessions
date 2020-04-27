@@ -35,6 +35,9 @@ DICT__HOST4_VIA_GW = {'host': 'py{}-py3-no-symlink'.format(PYTHON_MAJOR),
                       'init_env': 'content: alias python=python3'}
 
 SUDOSHELL = {'shellname': 'BashShell', 'cmd': 'sudo /bin/bash'}
+KEYAUTHENTICATEDSHELL = {'host': 'localhost',
+                         'initial_prompt': '# ',
+                         'shellname': 'KeyAuthenticatedSshShell'}
 
 
 update_sshshell_dicts(DICT__HOST1,

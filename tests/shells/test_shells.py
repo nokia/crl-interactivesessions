@@ -13,6 +13,7 @@ from crl.interactivesessions.shells.keyauthenticatedsshshell \
 from crl.interactivesessions.shells.sudoshell import SudoShell
 from crl.interactivesessions.shells.shellstack import DefaultSshShell
 from crl.interactivesessions.shells.sshoptions import sshoptions
+from crl.interactivesessions.shells.remotemodules.compatibility import to_bytes
 from .echochannel import EchoChannel
 
 
@@ -240,7 +241,7 @@ def test_keyauthenticatedsshshell_wait_for_prompt_ok(mock_read_until_prompt_foun
                                  initial_prompt='# ')
     s.check_start_success()
     mock_read_until_prompt_found.assert_called_once_with(
-        re.compile("# $"), timeout=20)
+        re.compile(to_bytes("# $")), timeout=20)
 
 
 @pytest.mark.usefixtures('mock_send_input_line')
@@ -253,7 +254,7 @@ def test_keyauthenticatedsshshell_wait_for_prompt_nok(mock_read_until_prompt_not
         execinfo.value.args[0] == \
         'Shell start to ipaddress did not succeed. Prompt not found.'
     mock_read_until_prompt_not_found.assert_called_once_with(
-        re.compile("# $"), timeout=20)
+        re.compile(to_bytes("# $")), timeout=20)
 
 
 @pytest.mark.usefixtures('mock_defaultssh_bases')

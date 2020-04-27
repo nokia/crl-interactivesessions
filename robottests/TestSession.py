@@ -13,7 +13,7 @@ from crl.interactivesessions.InteractiveSession import (
 class TestSession(object):
 
     def __init__(self):
-        self.session = InteractiveSession()
+        self.session = InteractiveSession(dump_received='dump_received.txt', dump_outgoing='dump_outgoing.txt')
         self.session.spawn(BashShell())
 
     def get_session(self):
