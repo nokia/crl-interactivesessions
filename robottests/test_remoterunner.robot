@@ -30,6 +30,7 @@ Force Tags     remoterunner
 @{SHELLDICTS1}=    ${HOST1}
 @{SHELLDICTS2}=    ${GW}    ${HOST2_VIA_GW}
 @{SHELLDICTS3}=    ${GW}    ${HOST4_VIA_GW}
+@{SHELLDICTS4}=    ${HOST1}    ${SUDOSHELL}    ${KEYAUTHENTICATEDSHELL}
 
 ${REPEAT}    20
 
@@ -66,6 +67,9 @@ Set RemoteRunner Targets
 
     RemoteRunner.Set Target    shelldicts=${SHELLDICTS3}
     ...                        name=target3
+
+    RemoteRunner.Set Target    shelldicts=${SHELLDICTS4}
+    ...                        name=target4
 
 Create Random File
     filehelper.Create Random File    targetlocal    100000
@@ -306,6 +310,7 @@ Template Test Execute Command In Target
     target1
     target2
     target3
+    target4
 
 Template Test Execute Background Commands
     [Template]  Test Execute Background Commands
