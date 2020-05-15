@@ -1,6 +1,7 @@
 # Copyright (C) 2019, Nokia
 
 FROM python:3.8.0-alpine3.10
+COPY spdx-report.rdf spdx-report.rdf
 RUN apk add --no-cache \
         openssh \
         openssh-sftp-server \
