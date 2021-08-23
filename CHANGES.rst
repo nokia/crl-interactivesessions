@@ -3,6 +3,13 @@
 CHANGES
 =======
 
+1.3.2
+-----
+
+- Change prompt setting in BashShell so that the prompt is not literally
+  shown in command history, otherwise listing command history could lead
+  to incorrect match when reading command output until prompt is found.
+
 1.3.1
 -----
 

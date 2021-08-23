@@ -174,6 +174,12 @@ def mock_paramiko(request):
         'crl.interactivesessions.shells.sshshell.paramiko'), request)
 
 
+@pytest.fixture(scope='function')
+def mock_uuid4(request):
+    return create_patch(mock.patch(
+        'uuid.uuid4', return_value='01234567-abcd-abcd-abcd-01234567abcd'), request)
+
+
 @pytest.mark.usefixtures('mock_bash_bases', 'mock_detect_bash_prompt')
 def test_bash_init_env():
     b = BashShell(init_env='init_env')
@@ -203,6 +209,17 @@ def test_bash_init_env_fails():
     with pytest.raises(SourceInitFileFailed) as execinfo:
         b.start()
     assert execinfo.value.args[0] == '1'
+
+
+@pytest.mark.usefixtures('mock_bash_bases', 'mock_detect_bash_prompt', 'mock_uuid4')
+def test_bash_prompt_not_literal():
+    b = BashShell(set_rand_promt=True)
+    b.start()
+    # pylint: disable=no-member,protected-access
+    assert b._send_input_line.mock_calls == [
+        mock.call('unset PROMPT_COMMAND'),
+        mock.call("export PS1='012''34567-abcd-abcd-abcd-01234567abcd'")
+    ]
 
 
 @pytest.mark.usefixtures('mock_namespace_bases')

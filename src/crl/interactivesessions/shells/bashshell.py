@@ -132,7 +132,11 @@ class BashShell(AutoCompletableShell):
     def set_prompt(self):
         if self.set_rand_promt:
             self._send_input_line("unset PROMPT_COMMAND")
-            self._send_input_line("export PS1={0}".format(self._prompt))
+            # Split the prompt and use bash concatenate to avoid literal prompt
+            # in command history. Prompt is output of uuid.uuid4() with length 36
+            # so split at 3 can be safely done.
+            prompt_cmd = "export PS1='{}''{}'".format(self._prompt[:3], self._prompt[3:])
+            self._send_input_line(prompt_cmd)
 
     def _detect_bash_prompt(self):
         """Detect current bash prompt and make sure terminal
