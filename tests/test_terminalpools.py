@@ -135,9 +135,9 @@ class FakeShuffle(object):
         self.shuffle_max = shuffle_max
         self.count = 0
 
-    def shuffle(self, l):
-        tofront = l.pop(self.count % self.shuffle_max)
-        l.insert(0, tofront)
+    def shuffle(self, li):
+        tofront = li.pop(self.count % self.shuffle_max)
+        li.insert(0, tofront)
         self.count += 1
 
 
