@@ -88,6 +88,7 @@ def terminate_msgpythonshell(retry_shellcontext, normal_pythonterminal):
         finally:
             normal_pythonterminal.terminate()
 
+
 # pylint: disable=unused-argument
 @pytest.fixture
 def retry_shellcontext(mock_strcomm, simple_retry_shellcontext):
