@@ -66,7 +66,6 @@ class ParamikoSpawn(SpawnBase):
         return self._read_queue_and_buf(timeout, size) if size > 0 else ''
 
     def _read_queue_and_buf(self, timeout, size):
-
         buf = self._read_with_or_without_timeout(timeout=timeout,
                                                  size=size,
                                                  buf=self._buf)
@@ -191,3 +190,6 @@ class ParamikoSpawn(SpawnBase):
         LOGGER.debug('closing ParamikoSpawn %s', self)
         self.sendeof()
         self._read_thread.join(10)
+
+    def setwinsize(self, width, height):
+        self.chan.resize_pty(width=width, height=height)

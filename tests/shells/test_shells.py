@@ -14,6 +14,8 @@ from crl.interactivesessions.shells.sudoshell import SudoShell
 from crl.interactivesessions.shells.shellstack import DefaultSshShell
 from crl.interactivesessions.shells.sshoptions import sshoptions
 from crl.interactivesessions.shells.remotemodules.compatibility import to_bytes
+from crl.interactivesessions.shells.remoteshell import RemoteShell
+from crl.interactivesessions.shells.kubernetesshell import KubernetesShell
 from .echochannel import EchoChannel
 
 
@@ -154,6 +156,11 @@ def mock_ssh_bases(request):
 
 
 @pytest.fixture(scope='function')
+def mock_remoteshell_bases(request):
+    return create_base_patcher(request, RemoteShell, MockBash)
+
+
+@pytest.fixture(scope='function')
 def mock_defaultssh_bases(request):
     return create_base_patcher(request, DefaultSshShell, MockSsh)
 
@@ -172,6 +179,12 @@ def mock_sudoshell_bases(request):
 def mock_paramiko(request):
     return create_patch(mock.patch(
         'crl.interactivesessions.shells.sshshell.paramiko'), request)
+
+
+@pytest.fixture(scope='function')
+def mock_paramiko_remoteshell(request):
+    return create_patch(mock.patch(
+        'crl.interactivesessions.shells.remoteshell.paramiko'), request)
 
 
 @pytest.fixture(scope='function')
@@ -296,7 +309,8 @@ def get_ssh_args(host):
 @pytest.mark.parametrize('platform,shell,shell_attrs,expected_cmd', [
     ('linux', BashShell, [], 'bash'),
     ('linux', SshShell, ['host'], 'ssh ' + get_ssh_args('host')),
-    ('linux', SshShell, ['host', 'user'], 'ssh ' + get_ssh_args('user@host'))
+    ('linux', SshShell, ['host', 'user'], 'ssh ' + get_ssh_args('user@host')),
+    ('linux', RemoteShell, ['host', 'user'], 'bash')
 ])
 def test_get_start_cmd(monkeypatch,
                        platform,
@@ -305,6 +319,23 @@ def test_get_start_cmd(monkeypatch,
                        expected_cmd):
     monkeypatch.setattr(sys, 'platform', platform)
     assert shell(*shell_attrs).get_start_cmd() == expected_cmd
+
+
+@pytest.mark.parametrize('shell,shell_attrs,shell_kwargs,expected_cmd', [
+    (KubernetesShell, ['my-pod'], {},
+     'kubectl exec my-pod -it bash'),
+    (KubernetesShell, ['my-pod'], {'container': 'cont'},
+     'kubectl exec my-pod -it -c cont bash'),
+    (KubernetesShell, ['my-pod'], {'namespace': 'name'},
+     'kubectl exec my-pod -it -n name bash'),
+    (KubernetesShell, ['my-pod'], {'container': 'cont', 'namespace': 'name'},
+     'kubectl exec my-pod -it -c cont -n name bash')
+])
+def test_get_kubernetes_start_cmd(shell,
+                                  shell_attrs,
+                                  shell_kwargs,
+                                  expected_cmd):
+    assert shell(*shell_attrs, **shell_kwargs).get_start_cmd() == expected_cmd
 
 
 @pytest.mark.parametrize('kwargs,expected_kwargs', [
@@ -334,3 +365,26 @@ def test_sshshell_no_spawn_in_linux(monkeypatch):
     ssh = SshShell('host', 'user', 'password')
     with pytest.raises(AttributeError):
         ssh.spawn(1)
+
+
+@pytest.mark.parametrize('kwargs,expected_kwargs', [
+    ({'username': 'username', 'password': 'password', 'port': 5022,
+      'key_file': 'key_file'},
+     {'username': 'username', 'password': 'password', 'port': 5022,
+      'key_filename': 'key_file'}),
+    ({},
+     {'username': None, 'password': None, 'port': 22, 'key_filename': None})])
+def test_remoteshell_spawn(mock_paramiko_remoteshell, kwargs, expected_kwargs):
+    mock_paramiko_remoteshell.SSHClient.return_value.invoke_shell.return_value = (
+        EchoChannel(list([b'recv'])))
+    ssh = RemoteShell('host', **kwargs)
+    terminal = ssh.spawn(1)
+    ssh.set_terminal(terminal)
+    try:
+        mock_paramiko_remoteshell.SSHClient.return_value.connect.assert_called_once_with(
+            'host', **expected_kwargs)
+        assert terminal.read_nonblocking(4, 1) == b'recv'
+    finally:
+        ssh.exit()
+        terminal.close()
+        mock_paramiko_remoteshell.SSHClient.return_value.close.assert_called_once_with()

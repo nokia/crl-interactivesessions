@@ -3,6 +3,16 @@
 CHANGES
 =======
 
+1.4.0b1
+-------
+
+- Add remote shell that uses paramiko in both linux and windows to setup remote
+  ssh connection
+
+- Add kubernetes shell that access the pods bash terminal by exec
+
+
+
 1.3.2
 -----
 
