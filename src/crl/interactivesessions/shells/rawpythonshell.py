@@ -1,7 +1,7 @@
 from .pythonshellbase import (
     PythonShellBase,
     UnexpectedOutputInPython)
-
+from .shell import TimeoutError
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
@@ -45,8 +45,18 @@ class RawPythonShell(PythonShellBase):
 
     def _read_until_prompt_after_last_command(self):
         last = self.setup_cmds[-1]
-        out = self._read_until(last, timeout=self.short_timeout)
+        out = ''
+        for _ in range(int(float(self.short_timeout) / float(0.1))):
+            try:
+                out += self._read_until(last, 0.1)
+                break
+            except TimeoutError:
+                self._sendline(last)
+                continue
+        else:
+            raise TimeoutError
         out += self._read_until_prompt(timeout=self.short_timeout)
+        self._verify_that_terminal_is_ready()
         return out
 
     @staticmethod
@@ -70,3 +80,8 @@ class RawPythonShell(PythonShellBase):
     def _setup_delaybeforesend(self):
         self._orig_delaybeforesend = self.delaybeforesend
         self.delaybeforesend = 0
+
+    def _verify_that_terminal_is_ready(self):
+        self._sendline("'ready'")
+        self._read_until("'ready'", self.short_timeout)
+        self._read_until_prompt(timeout=self.short_timeout)

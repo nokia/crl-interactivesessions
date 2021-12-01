@@ -1,0 +1,35 @@
+name: docker-robottests
+
+on:
+  pull_request:
+
+env:
+  PORT_PY2_PY2: 49152
+  PORT_PY2_PY3: 49153
+  PORT_PY2_PY3_NO_SYMLINK: 49154
+  PORT_PY2_GW: 49155
+  PORT_PY3_PY2: 49156
+  PORT_PY3_PY3: 49157
+  PORT_PY3_PY3_NO_SYMLINK: 49158
+  PORT_PY3_GW: 49159
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version.name }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: Install tox
+        run: python -m pip install tox
+      - name: Docker compose build
+        run: docker-compose -f "docker-robottests-targets/docker-compose.yaml" build --force-rm
+      - name: Docker compose up
+        run: docker-compose -f "docker-robottests-targets/docker-compose.yaml" up -d
+      - name: Run docker-robottests with tox
+        run: tox -o -p all -e "robottests{27,37} -- -V {$GITHUB_WORKSPACE}/robottests/targethosts.py"
+      - name: Docker compose tear down
+        if: always()
+        run: docker-compose -f "docker-robottests-targets/docker-compose.yaml" down
