@@ -28,10 +28,11 @@ class PoolNotFoundError(InteractiveSessionError):
 
 class _Terminal(object):
 
-    def __init__(self, key, shelldicts, properties):
+    def __init__(self, key, shelldicts, properties, proxies_factory):
         self.key = key
         self.shelldicts = shelldicts
         self.properties = properties
+        self._proxies_factory = proxies_factory
         self.terminal = None
         self.proxies = None
         self._initialize(shelldicts)
@@ -49,7 +50,7 @@ class _Terminal(object):
 
     def _initialize(self, shelldicts):
         self.terminal = AutoRunnerTerminal()
-        self.proxies = _RemoteRunnerProxies(self.terminal)
+        self.proxies = self._proxies_factory(self.terminal)
         self.terminal.initialize_with_shelldicts(
             shelldicts=deepcopy(shelldicts),
             prepare=self._prepare)
@@ -79,9 +80,13 @@ class _TerminalPools(object):
     def __init__(self):
         self._pools = OrderedDict()
         self._maxsize = 256
+        self._proxies_factory = _RemoteRunnerProxies
 
     def set_maxsize(self, maxsize):
         self._maxsize = maxsize
+
+    def set_proxies_factory(self, proxies_factory):
+        self._proxies_factory = proxies_factory
 
     @property
     def maxsize(self):
@@ -110,9 +115,16 @@ class _TerminalPools(object):
             self.put(terminal)
 
     def _get_pool(self, key, shelldicts, properties):
+
+        def _terminal_factory():
+            return _Terminal(key,
+                             shelldicts=shelldicts,
+                             properties=properties,
+                             proxies_factory=self._proxies_factory)
+
         if key not in self._pools:
             self._pools[key] = _Pool(
-                factory=lambda: _Terminal(key, shelldicts, properties),
+                factory=_terminal_factory,
                 exception=TerminalPoolsBusy)
         pool = self._pools[key]
         pool.set_maxsize(properties.max_processes_in_target)

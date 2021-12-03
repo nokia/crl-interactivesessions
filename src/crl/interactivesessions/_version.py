@@ -1,6 +1,6 @@
 __copyright__ = 'Copyright (C) 2019-2020, Nokia'
 
-VERSION = '1.4.0b1'
+VERSION = '1.4.0b2'
 GITHASH = ''
 
 

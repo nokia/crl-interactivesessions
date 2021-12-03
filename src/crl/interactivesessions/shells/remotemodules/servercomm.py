@@ -2,7 +2,9 @@ import time
 import sys
 import os
 import select
-import fcntl
+if os.name == 'posix':
+    import fcntl
+
 if 'chunkcomm' not in globals():
     from . import chunkcomm
     from . import compatibility
