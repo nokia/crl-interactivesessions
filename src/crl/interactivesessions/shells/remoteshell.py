@@ -113,7 +113,7 @@ class RemoteShell(BashShell):
                     "Remote shell startup error: {} command failed".format(cmd))
 
     def _custom_prompt_check(self):
-        return self.get_prompt() == self._detect_prompt()
+        return self.get_prompt() == self._detect_bash_prompt()
 
     def _reset_prompt(self):
         self._terminal.sendline('unset HISTFILE')

@@ -7,10 +7,10 @@ from contextlib import contextmanager
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
-
-NEW_SESSION_KWARGS = ({'start_new_session': True}
-                      if sys.version_info.major == 3
-                      else {'preexec_fn': os.setsid})
+if os.name == 'posix':
+    NEW_SESSION_KWARGS = ({'start_new_session': True}
+                          if sys.version_info.major == 3
+                          else {'preexec_fn': os.setsid})
 
 
 class PipeFiles(namedtuple('PipeFiles', ['read', 'write'])):

@@ -5,7 +5,8 @@ import pickle
 import base64
 import traceback
 import threading
-import fcntl
+if os.name == 'posix':
+    import fcntl
 import struct
 from io import BytesIO
 from contextlib import contextmanager

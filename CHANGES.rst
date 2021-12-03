@@ -3,6 +3,13 @@
 CHANGES
 =======
 
+
+1.4.0b2
+-------
+
+- Fix Windows compatibility
+- Add option for custom proxies to TerminalPools
+
 1.4.0b1
 -------
 
