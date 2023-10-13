@@ -5,20 +5,18 @@
 import threading
 import socket
 import logging
+import re
 # CAUTION: spawnbase is not mentioned in __all__ so it is supposed to used
 # internally only,
 from pexpect.spawnbase import SpawnBase, PY3
 from pexpect import EOF, TIMEOUT
+from six.moves.queue import Queue, Empty
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
 LOGGER = logging.getLogger(__name__)
-
-try:
-    from queue import Queue, Empty  # Python 3
-except ImportError:
-    from Queue import Queue, Empty  # Python 2
+ANSI_ESCAPE_REGEX = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 
 
 class ParamikoSpawn(SpawnBase):
@@ -33,8 +31,8 @@ class ParamikoSpawn(SpawnBase):
         crlf = '\n'
 
     def __init__(self, chan, timeout=30, maxread=40000, searchwindowsize=None,
-                 logfile=None, encoding=None,
-                 codec_errors='strict'):
+                 logfile=None, encoding=None, codec_errors='strict',
+                 remove_ansi_chars=False):
         super(ParamikoSpawn, self).__init__(
             timeout=timeout,
             maxread=maxread,
@@ -48,6 +46,7 @@ class ParamikoSpawn(SpawnBase):
         self._buf = self.string_type()
         self._read_reached_eof = False
         self._chunk_size = 32000
+        self._remove_ansi_chars = remove_ansi_chars
         self._read_queue = Queue()
         self._read_thread = threading.Thread(target=self._read_incoming)
         self._read_thread.setDaemon(True)
@@ -130,28 +129,30 @@ class ParamikoSpawn(SpawnBase):
                 self._read_queue.put(None)
                 return
 
+            if self._remove_ansi_chars:
+                buf_decoded = ANSI_ESCAPE_REGEX.sub('', buf.decode('utf-8'))
+                buf = buf_decoded.encode('utf-8')
             self._read_queue.put(buf)
 
     def write(self, s):
-        '''This is similar to send() except that there is no return value.
-        '''
+        """This is similar to send() except that there is no return value."""
         self.send(s)
 
     def writelines(self, sequence):
-        '''This calls write() for each element in the sequence.
+        """This calls write() for each element in the sequence.
 
         The sequence can be any iterable object producing strings, typically a
         list of strings. This does not add line separators. There is no return
         value.
-        '''
+        """
         for s in sequence:
             self.send(s)
 
     def send(self, s):
-        '''Send data to the Paramiko channel.
+        """Send data to the Paramiko channel.
 
         Returns the number of bytes written.
-        '''
+        """
         s = self._coerce_send_string(s)
         self._log(s, 'send')
 
@@ -165,25 +166,25 @@ class ParamikoSpawn(SpawnBase):
         return sbytes
 
     def sendline(self, s=''):
-        '''Wraps send(), sending string ``s`` to child process, with os.linesep
-        automatically appended. Returns number of bytes written. '''
+        """Wraps send(), sending string ``s`` to child process, with os.linesep
+        automatically appended. Returns number of bytes written. """
 
         n = self.send(s)
         return n + self.send(self.linesep)
 
     def wait(self):
-        '''Not used by interactivesessions.
-        '''
+        """Not used by interactivesessions.
+        """
         raise NotImplementedError()
 
     def kill(self, sig):
-        '''This is used by interactivesessions but rarely.
+        """This is used by interactivesessions but rarely.
         Not implementing now.
-        '''
+        """
         raise NotImplementedError()
 
     def sendeof(self):
-        '''Closes channel.'''
+        """Closes channel."""
         self.chan.close()
 
     def close(self, force=False):  # pylint: disable=unused-argument

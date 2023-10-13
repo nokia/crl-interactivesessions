@@ -1,6 +1,6 @@
+import re
 import uuid
 import logging
-import re
 from crl.interactivesessions.interactivesessionexceptions import (
     InteractiveSessionError)
 from .autocompletableshell import AutoCompletableShell
@@ -10,8 +10,7 @@ from .shell import (
 from .sshoptions import scpoptions
 from .registershell import RegisterShell
 
-
-__copyright__ = 'Copyright (C) 2019-2020, Nokia'
+__copyright__ = 'Copyright (C) 2019-2023, Nokia'
 
 LOGGER = logging.getLogger(__name__)
 _LOGLEVEL = 7
