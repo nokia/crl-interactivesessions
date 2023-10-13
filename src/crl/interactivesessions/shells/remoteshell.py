@@ -41,10 +41,10 @@ class RemoteShell(BashShell):
     **Args:**
     *ip*: IP address of the host
     *username*: login username
-    *password*: login passowrd. If not given, passwordless login is expected.
+    *password*: login password. If not given, passwordless login is expected.
     *tty_echo*: If True, then terminal echo is set on.
     *port*: If *port* is not None, alternate port is used in the connection
-            instead of the detfault 22.
+            instead of the default 22.
     *init_env*: Path to initialization file which is sourced after the all
                 other initialization is done.
     *source*: File to source to initial the terminal at the ssh host
@@ -79,7 +79,7 @@ class RemoteShell(BashShell):
                          key_filename=None if self.key_file is None else self.key_file)
         self.chan = self.ssh.invoke_shell()
         LOGGER.debug('Connection channel: %s', self.chan)
-        return ParamikoSpawn(self.chan, timeout=timeout)
+        return ParamikoSpawn(self.chan, timeout=timeout, remove_ansi_chars=True)
 
     def start(self):
         reader = MsgReader(self._read_until_end)
@@ -99,9 +99,9 @@ class RemoteShell(BashShell):
 
     def execute_init_command(self, cmd):
         self._terminal.sendline(cmd)
-        self._validate_init_command_succes(cmd)
+        self._validate_init_command_success(cmd)
 
-    def _validate_init_command_succes(self, cmd):
+    def _validate_init_command_success(self, cmd):
         if not self._custom_prompt_check():
             self._reset_prompt()
             if not self._custom_prompt_check():
@@ -113,7 +113,12 @@ class RemoteShell(BashShell):
                     "Remote shell startup error: {} command failed".format(cmd))
 
     def _custom_prompt_check(self):
-        return self.get_prompt() == self._detect_bash_prompt()
+        self._terminal.sendline('echo -n 123456789;echo 987654321')
+        res = self._read_until('123456789987654321', timeout=60)
+        LOGGER.debug('_read_until returned: "%s"', res)
+
+        self._read_until(self._prompt, timeout=60)
+        return bool(res)
 
     def _reset_prompt(self):
         self._terminal.sendline('unset HISTFILE')

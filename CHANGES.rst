@@ -3,6 +3,12 @@
 CHANGES
 =======
 
+1.4.0b3
+-------
+
+- Fix the hanging problem in RemoteShell by removing extra
+  ANSI CSI escape sequences in bash terminal prompt texts
+  of different OS
 
 1.4.0b2
 -------

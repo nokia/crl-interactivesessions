@@ -8,8 +8,7 @@ from crl.interactivesessions.interactivesessionexceptions import (
     InteractiveSessionError)
 from .remotemodules.compatibility import to_string
 
-
-__copyright__ = 'Copyright (C) 2019, Nokia'
+__copyright__ = 'Copyright (C) 2019-2023, Nokia'
 
 LOGGER = logging.getLogger(__name__)
 _LOGLEVEL = 7  # less than DEBUG
@@ -374,7 +373,6 @@ class Shell(object):
         else:
             with self._wrap_timeout_exception():
                 self.__read_until(trigger, timeout=timeout)
-
         return self._terminal.before.decode('utf-8')
 
     __RegexType = type(re.compile(''))
