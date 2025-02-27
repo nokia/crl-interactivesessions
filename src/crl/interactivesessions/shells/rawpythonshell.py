@@ -14,10 +14,10 @@ class RawPythonShell(PythonShellBase):
         '_orig_inattrs = termios.tcgetattr(_fdin)',
         '_new_inattrs = termios.tcgetattr(_fdin)',
         '_new_inattrs[3] = _new_inattrs[3] & ~termios.ECHO',
-        'termios.tcsetattr(_fdin, termios.TCSADRAIN, _new_inattrs)']
+        '_tmp_ret = termios.tcsetattr(_fdin, termios.TCSADRAIN, _new_inattrs)']
 
     setup_cmds = _setup_cmds_before_echo_off + [
-        'tty.setraw(_fdin)',
+        '_tmp_ret = tty.setraw(_fdin)',
         "'endofsetup'"]
     teardown_cmd = 'termios.tcsetattr(_fdin, termios.TCSADRAIN, _orig_inattrs)'
 

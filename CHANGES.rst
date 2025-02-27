@@ -3,6 +3,13 @@
 CHANGES
 =======
 
+1.4.0b4
+-------
+
+- Fix RawPythonShell problem with Python 3.12 by removing superfluous output
+  from the terminal caused the new return values from termios.tcsetattr and/or
+  tty.setraw.
+
 1.4.0b3
 -------
 
