@@ -222,6 +222,8 @@ def test_middlerubbish(readerwriter_factory, caplog, badwriter_factory):
 
     assert 'Buffer: {!r}'.format(rw.reader.getvalue()) in str(excinfo.value)
     assert rw.writer.rubbish_in_begin in to_bytes(caplog.text)
+    print(caplog.text)
+    print(excinfo.value)
 
 
 class ExampleSharedBytesIO(SharedBytesIO):
