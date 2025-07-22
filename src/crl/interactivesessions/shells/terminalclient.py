@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 import itertools
 from contextlib import contextmanager
@@ -166,10 +167,20 @@ class TerminalComm(ChunkReaderBase, ChunkWriterBase):
         self._timeout = timeout
 
     def _read(self, n):
-        return self._terminal.read_nonblocking(n, timeout=self._timeout)
+        ret = self._terminal.read_nonblocking(n, timeout=self._timeout)
+        self._write_log(ret, '/tmp/terminal_comm_read.log')
+        return ret
 
     def _flush(self):
         pass
 
     def _write(self, s):
+        self._write_log(s, '/tmp/terminal_comm_write.log')
         self._terminal.send(s)
+
+    @staticmethod
+    def _write_log(message, log_file):
+        timestamp = datetime.now().isoformat()
+        log_entry = f'{timestamp} - {message!r}\n'
+        with open(log_file, 'a', encoding='utf-8') as f:
+            f.write(log_entry)

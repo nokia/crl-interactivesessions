@@ -68,3 +68,15 @@ class ServerIdRequestHandler(MsgHandlerBase):
 class SendCommandHandler(CommandHandlerBase):
     def handle_msg(self, sendcommandrequest):
         self._exec_cmdrequest(sendcommandrequest)
+
+
+class SlowerWriteHandler(MsgHandlerBase):
+    def __init__(self):
+        super(SlowerWriteHandler, self).__init__()
+        self._strcomm = None
+
+    def set_strcomm(self, strcomm):
+        self._strcomm = strcomm
+
+    def handle_msg(self, request):
+        self._strcomm.comm.increase_sleep_before_write(request.sleep_increase)

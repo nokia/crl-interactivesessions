@@ -1,4 +1,5 @@
-import logging
+from datetime import datetime
+# import logging
 import time
 import sys
 import os
@@ -14,7 +15,8 @@ if 'chunkcomm' not in globals():
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
 CHILD_MODULES = [chunkcomm, compatibility]
-LOGGER = logging.getLogger(__name__)
+# LOGGER = logging.getLogger(__name__)
+
 
 class ServerComm(chunkcomm.ChunkWriterBase, chunkcomm.ChunkReaderBase):
 
@@ -62,11 +64,20 @@ class ServerComm(chunkcomm.ChunkWriterBase, chunkcomm.ChunkReaderBase):
         if self._sleep_before_read:
             time.sleep(self._sleep_before_read)
         ret = os.read(self.infd, n)
-        LOGGER.debug('read: %s, len: %s, expected len: %s', ret, len(ret), n)
+        # LOGGER.debug('debug read: %s, len: %s, expected len: %s', ret, len(ret), n)
+        self._write_log(ret, log_file='/tmp/server_comm_read.log')
         return ret
 
     def _write(self, s):
+        self._write_log(s, log_file='/tmp/server_comm_write.log')
         self._write_meth(s)
+
+    @staticmethod
+    def _write_log(message, log_file):
+        timestamp = datetime.now().isoformat()
+        log_entry = f'{timestamp} - {message!r}\n'
+        with open(log_file, 'a', encoding='utf-8') as f:
+            f.write(log_entry)
 
     def _flush(self):
         self.outfile.flush()

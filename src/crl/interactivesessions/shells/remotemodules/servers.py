@@ -130,7 +130,9 @@ class PythonServer(ServerBase):
             HandlerMap(requestcls=msgs.ExecCommandRequest,
                        handler_factory=self._execcmdhandler_factory),
             HandlerMap(requestcls=msgs.SendCommandRequest,
-                       handler_factory=self._sendcmdhandler_factory)]
+                       handler_factory=self._sendcmdhandler_factory),
+            HandlerMap(requestcls=msgs.SlowerWriteRequest,
+                       handler_factory=self._slowerwritehandler_factory)]
 
     def set_comm_factory(self, comm_factory):
         def comm_factory_with_stdout():
@@ -146,6 +148,11 @@ class PythonServer(ServerBase):
 
     def _sendcmdhandler_factory(self):
         return self._create_handler(msghandlers.SendCommandHandler)
+
+    def _slowerwritehandler_factory(self):
+        handler = self._create_handler(msghandlers.SlowerWriteHandler)
+        handler.set_strcomm(self.strcomm)
+        return handler
 
     def _create_handler(self, handlercls):
         handler = handlercls()

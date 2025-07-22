@@ -266,6 +266,12 @@ class SendCommandRequest(CommandMsgBase):
         return False
 
 
+class SlowerWriteRequest(MsgBase):
+    @property
+    def sleep_increase(self):
+        return self._arg
+
+
 class Ack(MsgBase):
     pass
 
