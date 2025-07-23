@@ -70,6 +70,7 @@ class MsgPythonShell(RawPythonShell):
         self._client.set_wrap_timeout_exception(self._wrap_timeout_exception)
 
     def _serve(self):
+        LOGGER.debug('MsgPythonShell: Sending serve')
         self._terminal.sendline(
             '{servers_mod_var}.PythonServer.create_and_serve('
             '{serialized_retry!r})'.format(
@@ -79,7 +80,9 @@ class MsgPythonShell(RawPythonShell):
         self._fatalerror = None
 
     def _get_server_id_in_start(self, timeout):
+        LOGGER.debug('MsgPythonShell: receiving server ID')
         r = self._client.receive_and_send_ack(timeout)
+        LOGGER.debug('MsgPythonShell: received server ID %s', r.server_id)
         return r.server_id
 
     def exec_command(self, cmd, timeout=-1):

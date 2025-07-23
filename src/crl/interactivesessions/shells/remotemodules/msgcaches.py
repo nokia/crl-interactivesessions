@@ -1,5 +1,10 @@
+from datetime import datetime
+import logging
 import time
 import itertools
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
@@ -126,9 +131,19 @@ class MsgCache(object):
         else:
             try:
                 self._timeout = next(self._timeouts)
+                self._write_log('MsgCache: sending expired msg'
+                                f'{self._msg.__class__.__name__}, uid={self._msg.uid}')
                 self._send_msg(self.msg)
             except StopIteration:
                 self._timeout = Infinite()
+
+    @staticmethod
+    def _write_log(message):
+        timestamp = datetime.now().isoformat()
+        log_entry = f'{timestamp} - {message!r}\n'
+        with open('/tmp/pythonserver.log', 'a', encoding='utf-8') as f:
+            f.write(log_entry)
+        LOGGER.debug(message)
 
 
 class Monotonic(object):

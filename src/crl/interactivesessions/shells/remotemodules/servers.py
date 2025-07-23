@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 import traceback
 import sys
@@ -55,8 +56,10 @@ class ServerBase(msgmanager.MsgManagerBase):
 
     def serve(self):
         LOGGER.debug('serving')
+        self._write_log('serving')
         self._msgcaches = msgcaches.MsgCaches(self._retry, send_msg=self._send_reply)
         self._strcomm.comm.set_msgcaches(self._msgcaches)
+        self._write_log('sending server ID reply')
         self._send_server_id_reply()
         try:
             while True:
@@ -72,19 +75,29 @@ class ServerBase(msgmanager.MsgManagerBase):
     def handle_next_msg(self):
         try:
             msg = self.deserialize(self._strcomm.read_str())
+            self._write_log(f'handling {msg.__class__.__name__}, uid={msg.uid}')
             if isinstance(msg, msgs.Ack):
                 self._msgcaches.remove(msg)
             else:
                 self._send_ack_if_needed(msg)
                 self._reply_cached_or_handle_msg(msg)
         except Exception as e:  # pylint: disable=broad-except
-            self._send_reply(msgs.FatalPythonErrorReply.create(
-                '{cls}: {msg}\nTraceback:\n{tb}'.format(
-                    cls=e.__class__.__name__,
-                    msg=str(e),
-                    tb=''.join(traceback.format_list(
-                        traceback.extract_tb(sys.exc_info()[2]))))))
+            msg = '{cls}: {msg}\nTraceback:\n{tb}'.format(
+                cls=e.__class__.__name__,
+                msg=str(e),
+                tb=''.join(traceback.format_list(
+                    traceback.extract_tb(sys.exc_info()[2]))))
+
+            self._write_log(msg)
+            self._send_reply(msgs.FatalPythonErrorReply.create(msg))
             raise exceptions.ExitFromServe()
+
+    @staticmethod
+    def _write_log(message):
+        timestamp = datetime.now().isoformat()
+        log_entry = f'{timestamp} - {message!r}\n'
+        with open('/tmp/pythonserver.log', 'a', encoding='utf-8') as f:
+            f.write(log_entry)
 
     def _send_ack_if_needed(self, msg):
         if msg.is_response_expected:
@@ -97,11 +110,12 @@ class ServerBase(msgmanager.MsgManagerBase):
             self._handle_msg(msg)
 
     def _handle_msg(self, msg):
+        self._write_log('Handling {msg.__class__.__name__}')
         msghandler = self._msghandler_factories[msg.__class__.__name__]()
         msghandler.set_server_id(self._server_id)
         msghandler.set_send_reply(self._send_reply_via_cache)
-
         msghandler.handle_msg(msg)
+        self._write_log('Handled {msg.__class__.__name__}')
 
     def _send_reply_via_cache(self, msg):
         self._msgcaches.push_msg(msg)

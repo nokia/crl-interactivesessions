@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 from contextlib import contextmanager
 from io import (
@@ -35,6 +36,14 @@ class ChunkIOBase(object):
     _hdr_tmpl = _chunk_id_tmpl + _chunk_len_tmpl
     _hdr_len = _chunk_id_width + _len_width
 
+    @staticmethod
+    def _write_log(message):
+        timestamp = datetime.now().isoformat()
+        log_entry = f'{timestamp} - {message!r}\n'
+        with open('/tmp/pythonserver.log', 'a', encoding='utf-8') as f:
+            f.write(log_entry)
+        LOGGER.debug(message)
+
 
 class NoAck(object):
     pass
@@ -70,11 +79,16 @@ class ChunkWriterBase(ChunkIOBase, commbase.CommWriterBase):
         self._write(io.getvalue())
 
     def _bytes_for_chunk_with_token(self, chunk, chunk_id):
+        self._write_log('Chunk writer: write chunk token 1')
         yield self._token
         hdr = self._hdr_tmpl.format(chunk_id=chunk_id, chunk_len=len(chunk))
+        self._write_log('Chunk writer: write hdr')
         yield compatibility.to_bytes(hdr)
+        self._write_log('Chunk writer: write chunk token 2')
         yield self._token
+        self._write_log('Chunk writer: write chunk')
         yield chunk
+        self._write_log('Chunk writer: write chunk token 3')
         yield self._token
 
     def _read_and_verify_ack(self, chunk_id):
@@ -85,9 +99,13 @@ class ChunkWriterBase(ChunkIOBase, commbase.CommWriterBase):
             try:
                 ack_chunk_id = int(chunk_id_str)
                 if chunk_id != ack_chunk_id:
+                    self._write_log('ChunkReaderError: expected chunk_id '
+                                    f'{chunk_id} != {ack_chunk_id}')
                     raise ChunkReaderError(
-                        'Expected chunk_id {chunk_id}, got {actual_chunk_id}')
+                        f'Expected chunk_id {chunk_id}, got {ack_chunk_id}')
             except ValueError:
+                self._write_log('ValueError: expected chunk_id '
+                                f'{chunk_id} != {chunk_id_str}')
                 raise ChunkReaderError(
                     'Unable to desirialize chunk_id {chunk_id_str}'.format(
                         chunk_id_str=chunk_id_str))
@@ -119,18 +137,27 @@ class ChunkReaderBase(ChunkIOBase, commbase.CommReaderBase):
         raise NotImplementedError()
 
     def read_until_size(self, n):
+        self._write_log('read_until_size: starting...')
         while self._sharedio.readable_size < n:
+            self._write_log('read_until_size: reading token 1')
             self._read_token()
+            self._write_log('read_until_size: reading hdr')
             hdr = self._read_until_size(self._hdr_len)
+            self._write_log('read_until_size: verify_read_token 2')
             self._verify_read_token()
             chunk_size_str = hdr[self._chunk_id_width:]
             chunk_size = int(chunk_size_str)
             self._sharedio.write(self._read_until_size(chunk_size))
+            self._write_log('read_until_size: verify_read_token 3')
             self._verify_read_token()
             chunk_id = hdr[:self._chunk_id_width]
             if chunk_id != b'0000':
+                self._write_log(f'read_until_size: writing chunk ACK {chunk_id}')
                 self._write_ack(chunk_id)
-        return self._sharedio.read(n)
+            self._write_log(f'read_until_size: read chunk {chunk_id}')
+        ret = self._sharedio.read(n)
+        self._write_log(f'read_until_size: returning {ret}')
+        return ret
 
     def _write_ack(self, chunk_id):
         """Override this if ACK for each chunk is required.
@@ -146,6 +173,7 @@ class ChunkReaderBase(ChunkIOBase, commbase.CommReaderBase):
     def _read_token(self):
         s = self._read_until_token()
         if s:
+            self._write_log(f'Unexpected read while trying to read until token: {s}')
             LOGGER.info('Unexpected read: %s', repr(s))
         return s
 
@@ -155,14 +183,27 @@ class ChunkReaderBase(ChunkIOBase, commbase.CommReaderBase):
     def _verify_read_token(self):
         s = self._read_token()
         if s:
+            self._write_log('ChunkReaderError: '
+                            f'Buffer: {self._sharedio.getvalue()!r}')
             raise ChunkReaderError('Buffer: {!r}'.format(self._sharedio.getvalue()))
 
 
 class ChunkAckBase(ChunkReaderBase, ChunkWriterBase):
+
+    def __init__(self):
+        ChunkReaderBase.__init__(self)
+        self._chunk_ack_reading = False
+
     def _read_ack(self):
-        return self._read_until_size(self._chunk_id_width)
+        try:
+            self._chunk_ack_reading = True
+            self._write_log('Chunk writer: reading ACK')
+            return self._read_until_size(self._chunk_id_width)
+        finally:
+            self._chunk_ack_reading = False
 
     def _write_ack(self, chunk_id):
+        self._write_log(f'Chunk reader: writing ACK {chunk_id}')
         self._write(chunk_id)
         self._flush()
 

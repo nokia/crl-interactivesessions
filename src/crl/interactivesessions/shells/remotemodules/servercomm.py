@@ -1,3 +1,4 @@
+from datetime import datetime
 import time
 import sys
 import os
@@ -50,7 +51,9 @@ class ServerComm(chunkcomm.ChunkAckBase):
     def _read(self, n):
         while True:
             r, _, _ = select.select([self.infd], [], [], *self._msgcaches.timeout_args)
-            self._msgcaches.send_expired()
+            if not self._chunk_ack_reading:
+                self._write_log('ServerComm: sending expired via cache ...')
+                self._msgcaches.send_expired()
             if r:
                 try:
                     return self._read_sleep_if_needed(n)
@@ -60,9 +63,12 @@ class ServerComm(chunkcomm.ChunkAckBase):
     def _read_sleep_if_needed(self, n):
         if self._sleep_before_read:
             time.sleep(self._sleep_before_read)
-        return os.read(self.infd, n)
+        ret = os.read(self.infd, n)
+        self._write_log(f'ServerComm.read: {ret}, n={n}, got={len(ret)}')
+        return ret
 
     def _write(self, s):
+        self._write_log(f'ServerComm.write: {s}')
         self._write_meth(s)
 
     def _flush(self):

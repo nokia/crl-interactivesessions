@@ -66,14 +66,20 @@ class TerminalClient(MsgManagerBase):
         for received_msg in self._received_msgs_for_msg(msg):
             if isinstance(received_msg, Ack):
                 return self._try_to_receive_until_reply(msg, timeout)
+            LOGGER.debug('TerminalClient: received message %s, uid=%s',
+                         received_msg.__class__.__name__, received_msg.uid)
             return received_msg
 
         return self._final_try_to_receive_until_reply(msg, timeout)
 
     def _received_msgs_for_msg(self, msg):
         for t in self._retry.timeouts():
+            LOGGER.debug('TerminalClient: Sending msg %s(uid=%s)',
+                         msg.__class__.__name__, msg.uid)
             self.send(msg)
             try:
+                LOGGER.debug('TerminalClient: Receiving ACK or reply for  msg %s(uid=%s)',
+                             msg.__class__.__name__, msg.uid)
                 yield self._receive_ack_or_reply(msg, t)
             except (TerminalClientError, TimerTimeout) as e:
                 LOGGER.debug('No reply yet for message uid %s: %s', msg.uid, e)
@@ -125,14 +131,21 @@ class TerminalClient(MsgManagerBase):
             self._send_ack(msg)
 
     def _send_ack(self, msg):
+        LOGGER.debug('TerminalClient: send ACK for %s, uid=%s',
+                     msg.__class__.__name__, msg.uid)
         self.send(Ack.create_reply(msg))
 
     def send(self, msg):
         self._strcomm.write_str(self.serialize(msg))
 
     def receive_and_send_ack(self, timeout):
+        LOGGER.debug('TerminalClient receive_and_send_ack with timeout %s', timeout)
         msg = self._receive(timeout)
+        LOGGER.debug('TerminalClient receive_and_send_ack: received %s, uid=%s, '
+                     'sending ACK...',
+                     msg.__class__.__name__, msg.uid)
         self._send_ack_if_needed(msg)
+        LOGGER.debug('TerminalClient receive_and_send_ack: ACK handled')
         return msg
 
     def _receive(self, timeout):
@@ -162,10 +175,13 @@ class TerminalComm(ChunkAckBase):
         self._timeout = timeout
 
     def _read(self, n):
-        return self._terminal.read_nonblocking(n, timeout=self._timeout)
+        ret = self._terminal.read_nonblocking(n, timeout=self._timeout)
+        LOGGER.debug('TerminalComm read: %s, n: %s', ret, n)
+        return ret
 
     def _flush(self):
         pass
 
     def _write(self, s):
+        LOGGER.debug('TerminalComm send: %s', s)
         self._terminal.send(s)
