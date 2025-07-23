@@ -128,13 +128,15 @@ def test_start_rawpythonshell(mockrawpythonshell):
     mockrawpythonshell.start()
 
     first_read = mock.call(timeout=30, suppress_timeout=False)
-    set_echo_off_read = mock.call(timeout=10, suppress_timeout=False)
+    set_echo_off_reads = [mock.call(timeout=10, suppress_timeout=False)
+                          for _ in range(2)]
 
-    expected_reads = [first_read, set_echo_off_read]
+    expected_reads = [first_read] + set_echo_off_reads
+    print(mockrawpythonshell.mock_read_until_prompt.mock_calls)
     assert mockrawpythonshell.mock_read_until_prompt.mock_calls == expected_reads
 
     assert mockrawpythonshell.mock_terminal.sendline.mock_calls == [
-        mock.call(cmd) for cmd in mockrawpythonshell.setup_cmds]
+        mock.call(cmd) for cmd in mockrawpythonshell.setup_cmds + ["'ready'"]]
 
 
 def test_start_rawpythonshell_raises(mockrawpythonshell):

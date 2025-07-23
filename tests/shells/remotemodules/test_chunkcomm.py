@@ -18,7 +18,7 @@ from crl.interactivesessions.shells.remotemodules.compatibility import to_bytes
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
 EXPECTED_TOKEN_LEN = 20
-EXPECTED_LEN_WIDTH = len(str(CHUNKSIZE))
+EXPECTED_HDR_LEN = 8
 LOGGER = logging.getLogger(__name__)
 
 
@@ -104,8 +104,8 @@ class DataRubbishWriter(MiddleWriterBase):
 
     """
     def _get_rubbish_start(self, s):
-        data_len = len(s) - 3 * EXPECTED_TOKEN_LEN - EXPECTED_LEN_WIDTH
-        return 2 * EXPECTED_TOKEN_LEN + EXPECTED_LEN_WIDTH + int(
+        data_len = len(s) - 3 * EXPECTED_TOKEN_LEN - EXPECTED_HDR_LEN
+        return 2 * EXPECTED_TOKEN_LEN + EXPECTED_HDR_LEN + int(
             data_len * self._clean_portion)
 
 
@@ -116,7 +116,7 @@ class LenRubbishWriter(MiddleWriterBase):
         {token}{data_len_start}{rubbish}{data_len_end}{token}{data}{token}
     """
     def _get_rubbish_start(self, s):  # pylint: disable=unused-argument
-        return EXPECTED_TOKEN_LEN + int(EXPECTED_LEN_WIDTH * self._clean_portion)
+        return EXPECTED_TOKEN_LEN + int(EXPECTED_HDR_LEN * self._clean_portion)
 
 
 class ExampleChunkReader(ChunkReaderBase):

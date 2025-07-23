@@ -5,9 +5,7 @@ import pexpect
 from monotonic import monotonic
 from crl.interactivesessions.shells.shell import TimeoutError
 from .remotemodules.msgmanager import MsgManagerBase
-from .remotemodules.chunkcomm import (
-    ChunkReaderBase,
-    ChunkWriterBase)
+from .remotemodules.chunkcomm import ChunkAckBase
 from .remotemodules.msgs import Ack
 
 
@@ -68,7 +66,6 @@ class TerminalClient(MsgManagerBase):
         for received_msg in self._received_msgs_for_msg(msg):
             if isinstance(received_msg, Ack):
                 return self._try_to_receive_until_reply(msg, timeout)
-
             return received_msg
 
         return self._final_try_to_receive_until_reply(msg, timeout)
@@ -78,7 +75,6 @@ class TerminalClient(MsgManagerBase):
             self.send(msg)
             try:
                 yield self._receive_ack_or_reply(msg, t)
-
             except (TerminalClientError, TimerTimeout) as e:
                 LOGGER.debug('No reply yet for message uid %s: %s', msg.uid, e)
 
@@ -156,9 +152,9 @@ class TerminalClient(MsgManagerBase):
                 raise
 
 
-class TerminalComm(ChunkReaderBase, ChunkWriterBase):
+class TerminalComm(ChunkAckBase):
     def __init__(self, terminal):
-        ChunkReaderBase.__init__(self)
+        ChunkAckBase.__init__(self)
         self._terminal = terminal
         self._timeout = -1
 

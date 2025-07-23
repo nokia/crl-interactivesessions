@@ -3,6 +3,14 @@
 CHANGES
 =======
 
+1.4.0b5
+-------
+
+- Fix overflow in Python server write by sending ACK messages for each chunk if
+  more than one chunk in the message.  Moreover, reduce the chunk size to 2 KB
+  from 4 KB and remove the imp module from default modules of the terminal as
+  it is removed from Python 3.12.
+
 1.4.0b4
 -------
 

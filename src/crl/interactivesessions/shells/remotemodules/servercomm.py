@@ -15,12 +15,12 @@ __copyright__ = 'Copyright (C) 2019, Nokia'
 CHILD_MODULES = [chunkcomm, compatibility]
 
 
-class ServerComm(chunkcomm.ChunkWriterBase, chunkcomm.ChunkReaderBase):
+class ServerComm(chunkcomm.ChunkAckBase):
 
     _sleep_in_broken_systems = 0.00005
 
     def __init__(self, infd, outfile):
-        chunkcomm.ChunkReaderBase.__init__(self)
+        chunkcomm.ChunkAckBase.__init__(self)
         self.infd = infd
         self.outfile = outfile
         self._msgcaches = None
@@ -50,7 +50,8 @@ class ServerComm(chunkcomm.ChunkWriterBase, chunkcomm.ChunkReaderBase):
     def _read(self, n):
         while True:
             r, _, _ = select.select([self.infd], [], [], *self._msgcaches.timeout_args)
-            self._msgcaches.send_expired()
+            if not self._chunk_ack_reading:
+                self._msgcaches.send_expired()
             if r:
                 try:
                     return self._read_sleep_if_needed(n)
