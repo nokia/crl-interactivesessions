@@ -132,7 +132,7 @@ class RunnerTerminal(object):
         args='{response_id}, timeout={timeout}')
 
     # list of libraries to be imported on the remote end during setup phase
-    _IMPORTS = ['pickle', 'imp', 'base64', 'os']
+    _IMPORTS = ['pickle', 'base64', 'os']
 
     # OPTIONS FOR CONFIGURING SUBCLASS BEHAVIOR
     # path to retrieve the remote handler module from

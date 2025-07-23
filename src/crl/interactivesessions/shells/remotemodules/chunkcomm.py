@@ -12,7 +12,7 @@ if 'commbase' not in globals():
 __copyright__ = 'Copyright (C) 2019, Nokia'
 
 CHILD_MODULES = [commbase, tokenreader, compatibility]
-CHUNKSIZE = 4096
+CHUNKSIZE = 2000
 MAX_BUFFER_SIZE = 100 * CHUNKSIZE
 LOGGER = logging.getLogger(__name__)
 
@@ -27,8 +27,17 @@ class ChunkReaderError(Exception):
 class ChunkIOBase(object):
 
     _token = b'^)}>?gDYs[ULFqAkSf~|'
+    _chunk_id_width = 4
+    _chunk_id_tmpl = '{{chunk_id:0{chunk_id_width}}}'.format(
+        chunk_id_width=_chunk_id_width)
     _len_width = len(str(CHUNKSIZE))
     _chunk_len_tmpl = '{{chunk_len:0{len_width}}}'.format(len_width=_len_width)
+    _hdr_tmpl = _chunk_id_tmpl + _chunk_len_tmpl
+    _hdr_len = _chunk_id_width + _len_width
+
+
+class NoAck(object):
+    pass
 
 
 class ChunkWriterBase(ChunkIOBase, commbase.CommWriterBase):
@@ -45,27 +54,48 @@ class ChunkWriterBase(ChunkIOBase, commbase.CommWriterBase):
 
     def write(self, s):
         """Write string or bytes *s* with *_write*"""
-        for i in compatibility.RANGE(0, len(s), CHUNKSIZE):
+        for chunk_id, i in enumerate(compatibility.RANGE(0, len(s), CHUNKSIZE)):
+            chunk_id = chunk_id % 10000
             chunk = s[i:i + CHUNKSIZE]
-            self._write_with_size_and_token(chunk)
+            self._write_with_size_and_token(chunk, chunk_id=chunk_id)
             self._flush()
+            if chunk_id:
+                self._read_and_verify_ack(chunk_id)
 
-    def _write_with_size_and_token(self, chunk):
+    def _write_with_size_and_token(self, chunk, chunk_id):
         io = BytesIO()
-        for s in self._bytes_for_chunk_with_token(chunk):
+        for s in self._bytes_for_chunk_with_token(chunk, chunk_id=chunk_id):
             io.write(s)
 
         self._write(io.getvalue())
 
-    def _bytes_for_chunk_with_token(self, chunk):
+    def _bytes_for_chunk_with_token(self, chunk, chunk_id):
         yield self._token
-        for s in self._bytes_for_chunk(chunk):
-            yield s
-            yield self._token
-
-    def _bytes_for_chunk(self, chunk):
-        yield compatibility.to_bytes(self._chunk_len_tmpl.format(chunk_len=len(chunk)))
+        hdr = self._hdr_tmpl.format(chunk_id=chunk_id, chunk_len=len(chunk))
+        yield compatibility.to_bytes(hdr)
+        yield self._token
         yield chunk
+        yield self._token
+
+    def _read_and_verify_ack(self, chunk_id):
+        if not chunk_id:
+            return
+        chunk_id_str = self._read_ack()
+        if not isinstance(chunk_id_str, NoAck):
+            try:
+                ack_chunk_id = int(chunk_id_str)
+                if chunk_id != ack_chunk_id:
+                    raise ChunkReaderError(
+                        f'Expected chunk_id {chunk_id}, got {ack_chunk_id}')
+            except ValueError:
+                raise ChunkReaderError(
+                    f'Unable to desirialize chunk_id {chunk_id_str}'.format(
+                        chunk_id_str=chunk_id_str))
+
+    def _read_ack(self):  # pylint: disable=no-self-use
+        """Override this if ACK for each chunk is required and return chunk_id string.
+        """
+        return NoAck()
 
 
 class ChunkReaderBase(ChunkIOBase, commbase.CommReaderBase):
@@ -91,12 +121,20 @@ class ChunkReaderBase(ChunkIOBase, commbase.CommReaderBase):
     def read_until_size(self, n):
         while self._sharedio.readable_size < n:
             self._read_token()
-            chunk_size_str = self._read_until_size(self._len_width)
+            hdr = self._read_until_size(self._hdr_len)
             self._verify_read_token()
+            chunk_size_str = hdr[self._chunk_id_width:]
             chunk_size = int(chunk_size_str)
             self._sharedio.write(self._read_until_size(chunk_size))
             self._verify_read_token()
+            chunk_id = hdr[:self._chunk_id_width]
+            if chunk_id != b'0000':
+                self._write_ack(chunk_id)
         return self._sharedio.read(n)
+
+    def _write_ack(self, chunk_id):
+        """Override this if ACK for each chunk is required.
+        """
 
     def _read_until_size(self, n):
         sio = SharedBytesIO()
@@ -118,6 +156,23 @@ class ChunkReaderBase(ChunkIOBase, commbase.CommReaderBase):
         s = self._read_token()
         if s:
             raise ChunkReaderError('Buffer: {!r}'.format(self._sharedio.getvalue()))
+
+
+class ChunkAckBase(ChunkReaderBase, ChunkWriterBase):
+    def __init__(self):
+        ChunkReaderBase.__init__(self)
+        self._chunk_ack_reading = False
+
+    def _read_ack(self):
+        try:
+            self._chunk_ack_reading = True
+            return self._read_until_size(self._chunk_id_width)
+        finally:
+            self._chunk_ack_reading = False
+
+    def _write_ack(self, chunk_id):
+        self._write(chunk_id)
+        self._flush()
 
 
 class SharedBytesIO(object):
