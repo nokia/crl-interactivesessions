@@ -132,7 +132,7 @@ def test_initialize_import_libraries(runnerterminal,
     cs = mock_session.get_session.return_value.current_shell.return_value
 
     assert cs.exec_command.mock_calls[0] == mock.call(
-        'import pickle, imp, base64, os', timeout=-1)
+        'import pickle, base64, os', timeout=-1)
 
 
 def test_close_session(runnerterminal,

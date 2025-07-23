@@ -15,12 +15,12 @@ __copyright__ = 'Copyright (C) 2019, Nokia'
 CHILD_MODULES = [chunkcomm, compatibility]
 
 
-class ServerComm(chunkcomm.ChunkWriterBase, chunkcomm.ChunkReaderBase):
+class ServerComm(chunkcomm.ChunkAckBase):
 
     _sleep_in_broken_systems = 0.00005
 
     def __init__(self, infd, outfile):
-        chunkcomm.ChunkReaderBase.__init__(self)
+        chunkcomm.ChunkAckBase.__init__(self)
         self.infd = infd
         self.outfile = outfile
         self._msgcaches = None
