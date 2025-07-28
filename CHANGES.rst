@@ -3,6 +3,11 @@
 CHANGES
 =======
 
+1.4.0b6
+-------
+
+- Fix Python 2 incompatibilities.
+
 1.4.0b5
 -------
 

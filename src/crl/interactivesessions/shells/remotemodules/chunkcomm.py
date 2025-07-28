@@ -86,10 +86,11 @@ class ChunkWriterBase(ChunkIOBase, commbase.CommWriterBase):
                 ack_chunk_id = int(chunk_id_str)
                 if chunk_id != ack_chunk_id:
                     raise ChunkReaderError(
-                        f'Expected chunk_id {chunk_id}, got {ack_chunk_id}')
+                        'Expected chunk_id {chunk_id}, got {ack_chunk_id}'.format(
+                            chunk_id=chunk_id, ack_chunk_id=ack_chunk_id))
             except ValueError:
                 raise ChunkReaderError(
-                    f'Unable to desirialize chunk_id {chunk_id_str}'.format(
+                    'Unable to desirialize chunk_id {chunk_id_str}'.format(
                         chunk_id_str=chunk_id_str))
 
     def _read_ack(self):  # pylint: disable=no-self-use
