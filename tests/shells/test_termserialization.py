@@ -1,8 +1,9 @@
 import os
-import pickle  # pylint: disable=unused-import; # noqa: F401
-import base64  # pylint: disable=unused-import; # noqa: F401
+import pickle
+import base64
 import pytest
 from crl.interactivesessions.shells.termserialization import (
+    b64_pickled_source_from_file,
     serialize_from_file,
     serialize)
 
@@ -22,6 +23,13 @@ def tmpfile_factory(tmpdir):
 def test_serialize_from_file(tmpfile_factory):
     content = 'content'
     assert eval(serialize_from_file(tmpfile_factory(content))) == content
+
+
+def test_b64_pickled_source_from_file(tmpfile_factory):
+    content = 'content'
+    path = tmpfile_factory(content)
+    assert pickle.loads(base64.b64decode(
+        b64_pickled_source_from_file(path))) == content
 
 
 def test_serialize():
