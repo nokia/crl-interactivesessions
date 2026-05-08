@@ -3,6 +3,14 @@
 CHANGES
 =======
 
+1.4.0b7
+-------
+
+- Fix MsgPythonShell initialization. In some terminals the initialization is
+  not working or is flaky because the size of the modules data sent is too
+  large causing corruption to Python terminal. The fix is to split the modules
+  into smaller chunks instead prior compiling those.
+
 1.4.0b6
 -------
 

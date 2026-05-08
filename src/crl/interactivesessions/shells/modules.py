@@ -7,12 +7,25 @@ Note:
       run actual commands in the remote end.
 """
 
+import hashlib
 import os
 import itertools
-from .termserialization import serialize_from_file
+from .termserialization import b64_pickled_source_from_file
 
 
 __copyright__ = 'Copyright (C) 2019, Nokia'
+
+
+def _path_bytes_for_fingerprint(path):
+    """Bytes form of *path* for hashing; works on Python 2 and 3."""
+    if isinstance(path, bytes):
+        return path
+    try:
+        return os.fsencode(path)
+    except AttributeError:
+        if hasattr(path, 'encode'):
+            return path.encode('utf-8', 'replace')
+        return path
 
 
 class MainModule(object):
@@ -22,10 +35,15 @@ class MainModule(object):
     command for exec itself.
     """
     _cmd_treshold_len = 5000
+    #: Max characters per ``+=`` fragment when building the pickled source on the
+    #: remote side (limits single terminal lines; 0 or negative means no limit).
+    _compile_cmd_chunk_size = 1024
 
-    def __init__(self, module):
+    def __init__(self, module, compile_cmd_chunk_size=None):
         self.module = module
         self._module_vars = {}
+        if compile_cmd_chunk_size is not None:
+            self._compile_cmd_chunk_size = compile_cmd_chunk_size
 
     @property
     def module_var(self):
@@ -108,15 +126,35 @@ class MainModule(object):
             pass
 
     def _exec_cmd_gen(self):
-        yield 'exec({compile_cmd}, {module_var}.__dict__)'.format(
-            compile_cmd=self._compile_cmd,
+        for cmd in self._reconstruct_pickled_source_cmds_gen():
+            yield cmd
+        compile_expr = (
+            "compile(pickle.loads(base64.b64decode({var})), filename={fname!r}, "
+            "mode='exec')").format(
+                var=self._compile_src_temp_var,
+                fname=os.path.basename(self.path))
+        yield 'exec({compile_expr}, {module_var}.__dict__)'.format(
+            compile_expr=compile_expr,
             module_var=self.module_var)
 
     @property
-    def _compile_cmd(self):
-        return ("compile({serialized}, filename='{basename}', "
-                "mode='exec')".format(serialized=serialize_from_file(self.path),
-                                      basename=os.path.basename(self.path)))
+    def _compile_src_temp_var(self):
+        """Stable remote name for the reconstructed base64 pickle payload."""
+        digest = hashlib.md5(_path_bytes_for_fingerprint(self.path)).hexdigest()[:16]
+        return '__crl_isess_src_{}'.format(digest)
+
+    def _reconstruct_pickled_source_cmds_gen(self):
+        """Emit ``temp = ''`` and ``temp += '...'`` lines bounded by chunk size."""
+        b64_payload = b64_pickled_source_from_file(self.path)
+        chunk_size = self._compile_cmd_chunk_size
+        var = self._compile_src_temp_var
+        if chunk_size is None or chunk_size <= 0:
+            yield "{} = {}".format(var, repr(b64_payload))
+            return
+        yield "{} = ''".format(var)
+        for i in range(0, len(b64_payload), chunk_size):
+            piece = b64_payload[i:i + chunk_size]
+            yield "{} += {}".format(var, repr(piece))
 
 
 class ChildModule(MainModule):
